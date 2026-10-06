@@ -46,6 +46,11 @@ class EmbeddingProvider(str, Enum):
     OPENAI = "openai"
     SENTENCE_TRANSFORMERS = "sentence-transformers"
     MATRYOSHKA = "matryoshka"
+    VOYAGE = "voyage"
+    COHERE = "cohere"
+    FASTEMBED = "fastembed"
+    CHEMBERTA = "chemberta"
+    LOCAL = "local"
 
 
 class RerankerProvider(str, Enum):
@@ -176,6 +181,8 @@ class EmbeddingConfig(BaseSettings):
     api_key: SecretStr | None = None
     model: str = "text-embedding-3-large"
     dimensions: int = Field(default=3072, ge=64, le=16384)
+    chemical_model: str = "deepchem/ChemBERTa-77M-MTR"
+    chemical_dimensions: int = Field(default=3072, ge=64, le=16384)
     batch_size: int = Field(default=100, ge=1, le=2048)
     timeout: int = Field(default=30, ge=1, le=300)
     retries: int = Field(default=3, ge=0, le=10)

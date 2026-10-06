@@ -40,6 +40,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # ── Shutdown tasks ─────────────────────────────────────────
     logger.info("ChemRAG shutting down")
+    try:
+        from backend.app.db.session import close_engine
+        await close_engine()
+        logger.info("Database engine closed")
+    except Exception as exc:
+        logger.warning("Error closing database engine", error=str(exc))
+
 
 
 def create_app() -> FastAPI:

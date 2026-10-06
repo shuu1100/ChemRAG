@@ -200,8 +200,12 @@ class SemanticRetriever:
             if filters.contains_chemical_entities is not None:
                 stmt = stmt.where(Chunk.contains_chemical_entities == filters.contains_chemical_entities)
 
-        result = await session.execute(stmt)
-        candidates = result.all()
+        try:
+            result = await session.execute(stmt)
+            candidates = result.all()
+        except Exception as exc:
+            logger.warning("DB session execution failed in in-memory semantic fallback: %s", exc)
+            return []
 
         q_arr = np.array(query_vec, dtype=np.float32)
         q_norm = np.linalg.norm(q_arr)

@@ -20,6 +20,13 @@ from backend.app.db.base import Base
 from backend.app.db.mixins import SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
 import enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from backend.app.models.user import Organization, User
+    from backend.app.models.chunk import Chunk
+    from backend.app.models.pipeline import IngestionJob
+    from backend.app.models.chemical import ChemicalStructure
 
 
 # ─────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@ from fastapi import APIRouter
 from backend.app.api.v1.endpoints.chemistry import router as chemistry_router
 from backend.app.api.v1.endpoints.documents import router as documents_router
 from backend.app.api.v1.endpoints.health import router as health_router
+from backend.app.api.v1.endpoints.search import router as search_router
 
 router = APIRouter()
 
@@ -20,8 +21,8 @@ router.include_router(documents_router, prefix="/documents", tags=["Documents"])
 # Chemistry validation & entity normalization (Phase 06)
 router.include_router(chemistry_router, prefix="/chemistry", tags=["Chemistry"])
 
-# Future phases will add routers here:
-# router.include_router(search_router,    prefix="/search",    tags=["Search"])      # Phase 09
+# Hybrid retrieval & cross-encoder search (Phase 09 & 10)
+router.include_router(search_router, prefix="/search", tags=["Search"])
 # router.include_router(agents_router,    prefix="/agents",    tags=["Agents"])      # Phase 11
 # router.include_router(auth_router,      prefix="/auth",      tags=["Auth"])        # Phase 19
 

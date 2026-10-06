@@ -215,8 +215,12 @@ class PostgreSQLLexicalRetriever(BaseLexicalRetriever):
             if filters.contains_chemical_entities is not None:
                 stmt = stmt.where(Chunk.contains_chemical_entities == filters.contains_chemical_entities)
 
-        result = await session.execute(stmt)
-        all_chunks = list(result.scalars().all())
+        try:
+            result = await session.execute(stmt)
+            all_chunks = list(result.scalars().all())
+        except Exception as exc:
+            logger.warning("DB session execution failed in in-memory lexical fallback: %s", exc)
+            return []
 
         query_tokens = set(re.findall(r"\w+", query.lower()))
 

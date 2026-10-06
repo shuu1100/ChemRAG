@@ -15,8 +15,14 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from typing import TYPE_CHECKING
+
 from backend.app.db.base import Base
 from backend.app.db.mixins import TimestampMixin, UUIDPrimaryKeyMixin
+
+if TYPE_CHECKING:
+    from backend.app.models.document import DocumentAsset
+    from backend.app.models.chunk import Chunk
 
 
 class EntityType(str, enum.Enum):

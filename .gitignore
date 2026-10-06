@@ -1,0 +1,70 @@
+# ======================
+# ChemRAG .gitignore
+# ======================
+
+# ----- Secrets -----
+.env
+*.env.local
+*.pem
+*.key
+*.crt
+secrets/
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.prof
+
+# ----- Node / Frontend -----
+node_modules/
+frontend/dist/
+frontend/.next/
+frontend/build/
+.pnp
+.pnp.js
+.yarn/
+
+# ----- Docker volumes -----
+data/postgres/
+data/redis/
+data/uploads/
+
+# ----- IDE -----
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ----- Logs -----
+*.log
+logs/
+*.pid
+
+# ----- Alembic -----
+# Keep versions, ignore generated scripts
+# (managed by alembic itself)
+
+# ----- OS -----
+Desktop.ini
+ehthumbs.db

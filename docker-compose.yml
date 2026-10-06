@@ -1,0 +1,148 @@
+services:
+
+  # ─────────────────────────────────────────────────
+  # PostgreSQL 16 with pgvector extension
+  # ─────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: chemrag_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-chemrag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-chemrag}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-chemrag} -d ${POSTGRES_DB:-chemrag}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - chemrag_net
+
+  # ─────────────────────────────────────────────────
+  # Redis 7 — Cache + Celery broker
+  # ─────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: chemrag_redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:-}
+      --appendonly yes
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - chemrag_net
+
+  # ─────────────────────────────────────────────────
+  # GROBID — Scientific PDF Structure Parser
+  # ─────────────────────────────────────────────────
+  grobid:
+    image: lfoppiano/grobid:0.8.0
+    container_name: chemrag_grobid
+    restart: unless-stopped
+    ports:
+      - "${GROBID_PORT:-8070}:8070"
+    environment:
+      - JAVA_OPTS=-Xmx4g
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8070/api/isalive || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
+    networks:
+      - chemrag_net
+
+  # ─────────────────────────────────────────────────
+  # Backend — FastAPI
+  # ─────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.backend
+    container_name: chemrag_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      grobid:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_HOST: redis
+      GROBID_BASE_URL: http://grobid:8070
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app/backend:ro
+      - uploads_data:/app/data/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/api/v1/health/liveness || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - chemrag_net
+
+  # ─────────────────────────────────────────────────
+  # Frontend — React + Vite (dev mode)
+  # ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../infra/docker/Dockerfile.frontend
+      target: dev
+    container_name: chemrag_frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      VITE_API_BASE_URL: http://localhost:${BACKEND_PORT:-8000}/api/v1
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend/src:/app/src:ro
+    networks:
+      - chemrag_net
+
+# ─────────────────────────────────────────────────
+# Named Volumes
+# ─────────────────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+# ─────────────────────────────────────────────────
+# Networks
+# ─────────────────────────────────────────────────
+networks:
+  chemrag_net:
+    driver: bridge

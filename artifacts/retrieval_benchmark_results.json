@@ -1,0 +1,65 @@
+{
+  "timestamp": "2026-10-06T14:43:29Z",
+  "retrieval_performance": {
+    "semantic_only": {
+      "recall@1": 0.2,
+      "recall@5": 1.0,
+      "mrr": 0.45666666666666667,
+      "ndcg@5": 0.5896918237758785,
+      "latency_mean_ms": 0.882
+    },
+    "lexical_only": {
+      "recall@1": 0.8,
+      "recall@5": 1.0,
+      "mrr": 0.9,
+      "ndcg@5": 0.9261859507142916,
+      "latency_mean_ms": 0.022
+    },
+    "chemical_only": {
+      "recall@1": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 1.0,
+      "latency_mean_ms": 0.684
+    },
+    "hybrid_rrf": {
+      "recall@1": 1.0,
+      "recall@5": 1.0,
+      "mrr": 1.0,
+      "ndcg@5": 1.0,
+      "latency_mean_ms": 0.962
+    }
+  },
+  "filtered_ann_evaluation": {
+    "tag_1pct": {
+      "corpus_size": 500,
+      "matching_items_count": 5,
+      "selectivity_percent": 1.0,
+      "top_k": 5,
+      "ef_search": 30,
+      "pre_filter_recall": 1.0,
+      "post_filter_recall": 0.0,
+      "recall_delta": 1.0
+    },
+    "tag_10pct": {
+      "corpus_size": 500,
+      "matching_items_count": 45,
+      "selectivity_percent": 9.0,
+      "top_k": 5,
+      "ef_search": 30,
+      "pre_filter_recall": 1.0,
+      "post_filter_recall": 1.0,
+      "recall_delta": 0.0
+    },
+    "tag_50pct": {
+      "corpus_size": 500,
+      "matching_items_count": 200,
+      "selectivity_percent": 40.0,
+      "top_k": 5,
+      "ef_search": 30,
+      "pre_filter_recall": 1.0,
+      "post_filter_recall": 1.0,
+      "recall_delta": 0.0
+    }
+  }
+}

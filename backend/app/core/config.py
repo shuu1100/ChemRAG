@@ -57,6 +57,8 @@ class RerankerProvider(str, Enum):
     COHERE = "cohere"
     CROSS_ENCODER = "cross-encoder"
     JINA = "jina"
+    BGE = "bge"
+    LOCAL = "local"
 
 
 class StorageBackend(str, Enum):
@@ -200,6 +202,7 @@ class RerankerConfig(BaseSettings):
     api_key: SecretStr | None = None
     model: str = "rerank-english-v3.0"
     top_n: int = Field(default=5, ge=1, le=100)
+    batch_size: int = Field(default=32, ge=1, le=128)
     timeout: int = Field(default=20, ge=1, le=120)
     retries: int = Field(default=3, ge=0, le=10)
     rate_limit_rpm: int = Field(default=100, ge=1)

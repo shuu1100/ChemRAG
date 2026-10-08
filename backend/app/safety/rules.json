@@ -1,0 +1,103 @@
+[
+  {
+    "rule_id": "RULE-001-INJECTION",
+    "name": "Prompt and Tool Injection Defense",
+    "description": "Block any adversarial prompt overrides, jailbreaks, or arbitrary code execution.",
+    "action_pattern": "all",
+    "risk_categories": [
+      "prompt_injection"
+    ],
+    "minimum_role": "admin",
+    "default_decision": "REFUSE",
+    "warning_message": "Prompt injection attempt blocked.",
+    "policy_version": "1.0.0",
+    "is_active": true
+  },
+  {
+    "rule_id": "RULE-002-AUTONOMOUS",
+    "name": "Prohibit Autonomous Laboratory Execution",
+    "description": "Strictly prohibit unmonitored robotic synthesis or automated physical lab execution.",
+    "action_pattern": "autonomous_execution",
+    "risk_categories": [
+      "autonomous_execution"
+    ],
+    "minimum_role": "admin",
+    "default_decision": "REFUSE",
+    "warning_message": "Autonomous lab control directives are prohibited by safety policy.",
+    "policy_version": "1.0.0",
+    "is_active": true
+  },
+  {
+    "rule_id": "RULE-003-CWC1",
+    "name": "Absolute Prohibition on Schedule 1 Chemical Weapons",
+    "description": "Zero-tolerance refusal for Chemical Weapons Convention Schedule 1 synthesis, handling, or dissemination.",
+    "action_pattern": "synthesis",
+    "risk_categories": [
+      "cwc_schedule_1",
+      "lethal_toxin"
+    ],
+    "minimum_role": "admin",
+    "default_decision": "REFUSE",
+    "warning_message": "CWC Schedule 1 chemical weapons synthesis or manufacture is strictly prohibited.",
+    "policy_version": "1.0.0",
+    "is_active": true
+  },
+  {
+    "rule_id": "RULE-004-EXPLOSIVES",
+    "name": "Explosives and Energetics Restriction",
+    "description": "Prohibit improvised explosive synthesis and energetic precursor preparation.",
+    "action_pattern": "synthesis",
+    "risk_categories": [
+      "explosive_precursor"
+    ],
+    "minimum_role": "compliance_officer",
+    "default_decision": "REFUSE",
+    "warning_message": "High-explosive and energetic material synthesis instructions are blocked.",
+    "policy_version": "1.0.0",
+    "is_active": true
+  },
+  {
+    "rule_id": "RULE-005-DRUG-PRECURSORS",
+    "name": "Illicit Controlled Substance Precursor Safeguard",
+    "description": "Refuse clandestine synthesis instructions for controlled narcotic precursors.",
+    "action_pattern": "synthesis",
+    "risk_categories": [
+      "illicit_drug_precursor"
+    ],
+    "minimum_role": "compliance_officer",
+    "default_decision": "REFUSE",
+    "warning_message": "Illicit substance precursor synthesis is restricted.",
+    "policy_version": "1.0.0",
+    "is_active": true
+  },
+  {
+    "rule_id": "RULE-006-DUAL-USE-LOOKUP",
+    "name": "Dual-Use Educational Property Access",
+    "description": "Allow factual toxicity/physical property lookups for dual-use Schedule 2/3 chemicals with mandatory hazard warnings.",
+    "action_pattern": "property_lookup",
+    "risk_categories": [
+      "cwc_schedule_2",
+      "cwc_schedule_3"
+    ],
+    "minimum_role": "student",
+    "default_decision": "ALLOW_WITH_WARNING",
+    "warning_message": "Chemical is subject to dual-use regulatory oversight. Observe international handling precautions.",
+    "policy_version": "1.0.0",
+    "is_active": true
+  },
+  {
+    "rule_id": "RULE-007-RESEARCHER-REVIEW",
+    "name": "Dual-Use Synthesis Academic Review",
+    "description": "Require compliance review before providing industrial reaction pathways for Schedule 2 dual-use substances.",
+    "action_pattern": "synthesis",
+    "risk_categories": [
+      "cwc_schedule_2",
+      "cwc_schedule_3"
+    ],
+    "minimum_role": "researcher",
+    "default_decision": "REQUIRE_REVIEW",
+    "warning_message": "Action requires Institutional Review Board (IRB) or Compliance Officer approval.",
+    "policy_version": "1.0.0",
+    "is_active": true
+  }
+]

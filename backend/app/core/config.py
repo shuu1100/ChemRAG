@@ -114,8 +114,9 @@ class DatabaseConfig(BaseSettings):
 
     @property
     def sync_url(self) -> str:
+        """Synchronous URL using psycopg v3 (for Alembic and sync operations)."""
         return (
-            f"postgresql+psycopg2://{self.user}:{self.password.get_secret_value()}"
+            f"postgresql+psycopg://{self.user}:{self.password.get_secret_value()}"
             f"@{self.host}:{self.port}/{self.db}"
         )
 
@@ -340,6 +341,12 @@ class Settings(BaseSettings):
     app_env: AppEnv = AppEnv.DEVELOPMENT
     app_debug: bool = False
     app_log_level: str = "INFO"
+
+    # Database/infrastructure mode
+    # When False (default), the application raises clearly if PostgreSQL or Redis
+    # are unavailable instead of silently falling back to in-memory behavior.
+    # Only set to True for pure unit tests that mock the database layer.
+    allow_in_memory_fallback: bool = False
 
     # Backend server
     backend_host: str = "0.0.0.0"

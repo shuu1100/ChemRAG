@@ -13,7 +13,10 @@ import logging
 from typing import Any, Sequence
 import uuid
 
-from rdkit import Chem
+try:
+    from rdkit import Chem
+except (ImportError, Exception):
+    Chem = None
 
 from backend.app.chunking.models import ChunkPayload
 from backend.app.embeddings.base import (

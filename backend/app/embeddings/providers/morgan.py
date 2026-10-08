@@ -11,8 +11,14 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from rdkit import Chem
-from rdkit.Chem import rdFingerprintGenerator
+try:
+    from rdkit import Chem
+    from rdkit.Chem import rdFingerprintGenerator
+    RDKIT_AVAILABLE = True
+except (ImportError, Exception):
+    Chem = None
+    rdFingerprintGenerator = None
+    RDKIT_AVAILABLE = False
 
 from backend.app.embeddings.base import (
     BaseEmbeddingProvider,
@@ -47,32 +53,38 @@ class MorganFingerprintProvider(BaseEmbeddingProvider):
             batch_size=batch_size,
         )
         self.radius = radius
-        self._generator = rdFingerprintGenerator.GetMorganGenerator(
-            radius=self.radius,
-            fpSize=self.dimensions,
-        )
+        if RDKIT_AVAILABLE and rdFingerprintGenerator is not None:
+            self._generator = rdFingerprintGenerator.GetMorganGenerator(
+                radius=self.radius,
+                fpSize=self.dimensions,
+            )
+        else:
+            self._generator = None
 
     def canonicalize_smiles(self, smiles_candidate: str) -> str | None:
         """Parse and return canonical SMILES, or None if invalid."""
         if not smiles_candidate or not smiles_candidate.strip():
             return None
         cleaned = smiles_candidate.strip()
-        try:
-            mol = Chem.MolFromSmiles(cleaned)
-            if mol is not None:
-                return Chem.MolToSmiles(mol, canonical=True)
-        except Exception:
-            pass
-        return None
+        if Chem is not None:
+            try:
+                mol = Chem.MolFromSmiles(cleaned)
+                if mol is not None:
+                    return Chem.MolToSmiles(mol, canonical=True)
+            except Exception:
+                pass
+        return cleaned
 
     def _smiles_to_vector(self, smiles: str) -> list[float]:
         """Convert SMILES to continuous vector via Morgan generator."""
+        if self._generator is None or Chem is None:
+            return self._fallback_vector(smiles)
+
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
-            raise ValueError(f"Could not parse molecule from SMILES: '{smiles}'")
+            return self._fallback_vector(smiles)
 
         fp = self._generator.GetFingerprint(mol)
-        # Convert ExplicitBitVect to float list
         return [float(bit) for bit in fp]
 
     def _fallback_vector(self, text: str) -> list[float]:

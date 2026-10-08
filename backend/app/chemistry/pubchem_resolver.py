@@ -40,6 +40,10 @@ class PubChemRecord:
     molecular_weight: Optional[float] = None
     synonyms: List[str] = field(default_factory=list)
 
+    @property
+    def smiles(self) -> str:
+        return self.canonical_smiles
+
 
 class PubChemResolver:
     """
@@ -150,6 +154,28 @@ class PubChemResolver:
         record = await self._fetch_compound_properties(url)
         self._set_cache(cache_key, record)
         return record
+
+    async def resolve(self, identifier: str) -> Optional[PubChemRecord]:
+        """
+        Unified identifier resolver: automatically routes to resolve_by_inchikey,
+        resolve_by_smiles, or resolve_by_name based on input structure.
+        """
+        clean = identifier.strip()
+        if not clean:
+            return None
+
+        # Check for InChIKey (27 chars, format: 14 chars - 10 chars - 1 char)
+        if len(clean) == 27 and clean.count("-") == 2:
+            return await self.resolve_by_inchikey(clean)
+
+        # Check for SMILES: contains chemical bonds/stereochemistry characters
+        if any(c in clean for c in ["=", "#", "@", "[", "]", "/", "\\"]):
+            rec = await self.resolve_by_smiles(clean)
+            if rec:
+                return rec
+
+        # Default: resolve by chemical name, common name, or CAS number
+        return await self.resolve_by_name(clean)
 
     async def _fetch_compound_properties(self, url: str) -> Optional[PubChemRecord]:
         """Execute HTTP request against PubChem with retries and rate limiting."""

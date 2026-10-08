@@ -15,7 +15,10 @@ from typing import Any, Sequence
 import uuid
 
 import numpy as np
-from rdkit import Chem
+try:
+    from rdkit import Chem
+except (ImportError, Exception):
+    Chem = None
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 

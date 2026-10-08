@@ -76,6 +76,10 @@ class PostgreSQLLexicalRetriever(BaseLexicalRetriever):
         if not query_text or not query_text.strip():
             return []
 
+        if session is None:
+            logger.warning("PostgreSQLLexicalRetriever search called with session=None; returning empty list.")
+            return []
+
         clean_query = query_text.strip()
         technical_ids = self.extract_technical_identifiers(clean_query)
 

@@ -42,22 +42,39 @@ class HealthResponse(BaseModel):
 )
 async def health_check() -> HealthResponse:
     """
-    Shallow health check — always returns 200 if the process is alive.
-    Deep connectivity checks are done in /readiness.
+    Health check — checks process, database, and Redis connectivity.
     """
+    from backend.app.db.health import check_services_health
+
     settings = get_settings()
+    services_health = await check_services_health()
+
+    db_status = services_health.get("database", {}).get("status", "unknown")
+    redis_status = services_health.get("redis", {}).get("status", "unknown")
+
+    services = [
+        ServiceStatus(name="api", status="ok"),
+        ServiceStatus(
+            name="database",
+            status="ok" if db_status == "healthy" else "degraded",
+            detail=str(services_health.get("database", {})),
+        ),
+        ServiceStatus(
+            name="redis",
+            status="ok" if redis_status == "healthy" else "degraded",
+            detail=str(services_health.get("redis", {})),
+        ),
+    ]
+
+    overall_status = "ok" if services_health.get("status") == "healthy" else "degraded"
+
     return HealthResponse(
-        status="ok",
+        status=overall_status,
         env=settings.app_env.value,
         version="0.1.0",
         uptime_seconds=round(time.time() - _START_TIME, 2),
         timestamp=datetime.now(timezone.utc),
-        services=[
-            ServiceStatus(name="api", status="ok"),
-            # Phase 02 will add: database, redis
-            # Phase 08 will add: vector_store, embedding_model
-            # Phase 03 will add: grobid
-        ],
+        services=services,
     )
 
 
@@ -69,7 +86,7 @@ async def health_check() -> HealthResponse:
 )
 async def readiness_check() -> HealthResponse:
     """
-    Readiness probe.  Actual DB/Redis pings will be added in Phase 02.
+    Readiness probe. Checks DB and Redis connection readiness.
     """
     return await health_check()
 
@@ -78,3 +95,4 @@ async def readiness_check() -> HealthResponse:
 async def liveness() -> dict[str, str]:
     """Minimal liveness probe for Kubernetes / Docker HEALTHCHECK."""
     return {"status": "alive"}
+

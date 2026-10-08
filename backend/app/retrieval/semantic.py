@@ -64,6 +64,10 @@ class SemanticRetriever:
         if not query_text and query_vector is None:
             return []
 
+        if session is None:
+            logger.warning("SemanticRetriever search called with session=None; returning empty list.")
+            return []
+
         # 1. Compute or use provided query vector
         vec = query_vector if query_vector is not None else await self.get_query_embedding(query_text)
 

@@ -34,7 +34,7 @@ class TestDatabaseConnectivity:
         from backend.app.core.config import DatabaseConfig
         db = DatabaseConfig()
         url = db.sync_url
-        assert url.startswith("postgresql+psycopg2://")
+        assert url.startswith("postgresql+psycopg://")
 
     def test_engine_creates(self) -> None:
         """Engine factory should not raise without a live connection."""
@@ -146,3 +146,36 @@ class TestAllModelsImport:
         registered = set(Base.metadata.tables.keys())
         missing = expected_tables - registered
         assert not missing, f"Tables not registered in metadata: {missing}"
+
+
+@pytest.mark.integration
+class TestRepositoriesAndHealth:
+    """Verify repository interfaces and health check functions."""
+
+    def test_repositories_import(self) -> None:
+        from backend.app.repositories import (
+            BaseRepository,
+            DocumentRepository,
+            ChunkRepository,
+            EmbeddingRepository,
+            ChemicalRepository,
+        )
+        assert BaseRepository is not None
+        assert DocumentRepository is not None
+        assert ChunkRepository is not None
+        assert EmbeddingRepository is not None
+        assert ChemicalRepository is not None
+
+    @pytest.mark.asyncio
+    async def test_health_check_functions(self) -> None:
+        from backend.app.db.health import check_database_health, check_redis_health, check_services_health
+        
+        db_res = await check_database_health()
+        assert "status" in db_res
+
+        redis_res = await check_redis_health()
+        assert "status" in redis_res
+
+        overall = await check_services_health()
+        assert "status" in overall
+

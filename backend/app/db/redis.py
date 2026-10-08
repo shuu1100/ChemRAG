@@ -14,20 +14,69 @@ import json
 import logging
 from typing import Any, Optional
 
-import redis.asyncio as aioredis
-from redis.asyncio import Redis
-from redis.exceptions import ConnectionError as RedisConnectionError, TimeoutError as RedisTimeoutError
+try:
+    import redis.asyncio as aioredis
+    from redis.asyncio import Redis
+    from redis.exceptions import ConnectionError as RedisConnectionError, TimeoutError as RedisTimeoutError
+    HAS_REDIS = True
+except ImportError:
+    HAS_REDIS = False
+    aioredis = None  # type: ignore
+    Redis = Any  # type: ignore
+    RedisConnectionError = Exception  # type: ignore
+    RedisTimeoutError = Exception  # type: ignore
 
 from backend.app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-_redis_client: Redis | None = None
+
+class DummyRedisClient:
+    """Fallback dummy Redis client when redis-py is not installed."""
+
+    def __init__(self) -> None:
+        self._cache: dict[str, str] = {}
+
+    async def ping(self) -> bool:
+        return True
+
+    async def get(self, key: str) -> str | None:
+        return self._cache.get(key)
+
+    async def set(self, key: str, value: str, ex: int | None = None) -> bool:
+        self._cache[key] = value
+        return True
+
+    async def delete(self, *keys: str) -> int:
+        count = 0
+        for k in keys:
+            if k in self._cache:
+                del self._cache[k]
+                count += 1
+        return count
+
+    async def close(self) -> None:
+        pass
+
+    async def health_check(self) -> dict[str, Any]:
+        return {
+            "status": "unhealthy",
+            "redis": "dummy_fallback",
+            "reason": "redis python library not installed",
+        }
 
 
-def get_redis_client() -> Redis:
-    """Return the singleton Redis client. Raises if not initialized."""
+_redis_client: Any = None
+
+
+def get_redis_client() -> Any:
+    """Return the singleton Redis client or fallback if not installed."""
     global _redis_client
+    if not HAS_REDIS:
+        if _redis_client is None:
+            _redis_client = DummyRedisClient()
+        return _redis_client
+
     if _redis_client is None:
         settings = get_settings()
         rc = settings.redis

@@ -28,24 +28,40 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
 
     # ── Startup tasks ──────────────────────────────────────────
-    # 1. Database connection (Phase 02)
-    # 2. Redis connection (Phase 02)
-    # 3. Vector store initialization (Phase 08)
-    # 4. LLM / Embedding model warmup (Phase 08)
-    # 5. GROBID health check (Phase 03)
-    # (each will be added in their respective phases)
+    try:
+        from backend.app.db.redis import get_redis_client
+        redis_client = get_redis_client()
+        await redis_client.ping()
+        logger.info("Redis client initialized")
+    except Exception as exc:
+        logger.warning("Redis initialization warning", error=str(exc))
 
-    logger.info("ChemRAG started — all services ready")
+    try:
+        from backend.app.db.health import check_database_health
+        db_health = await check_database_health()
+        logger.info("Database health check on startup", status=db_health.get("status"))
+    except Exception as exc:
+        logger.warning("Database startup check warning", error=str(exc))
+
+    logger.info("ChemRAG started — services ready")
     yield
 
     # ── Shutdown tasks ─────────────────────────────────────────
     logger.info("ChemRAG shutting down")
+    try:
+        from backend.app.db.redis import close_redis_client
+        await close_redis_client()
+        logger.info("Redis client closed")
+    except Exception as exc:
+        logger.warning("Error closing Redis client", error=str(exc))
+
     try:
         from backend.app.db.session import close_engine
         await close_engine()
         logger.info("Database engine closed")
     except Exception as exc:
         logger.warning("Error closing database engine", error=str(exc))
+
 
 
 

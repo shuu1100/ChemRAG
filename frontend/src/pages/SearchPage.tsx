@@ -7,33 +7,19 @@ export const SearchPage: React.FC = () => {
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [results, setResults] = useState<any[]>([]);
 
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   const handleSearch = async () => {
     if (!query.trim()) return;
     setIsSearching(true);
+    setErrorMsg(null);
     try {
       const data = await searchApi.searchHybrid(query, 5);
       setResults(data.results || []);
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Search failed:', err);
-      // Fallback mock results for preview
-      setResults([
-        {
-          chunk_id: 'c-001',
-          content: 'Ethanol (C2H6O) boiling point is 78.37 °C at 1 atm with a molar enthalpy of vaporization ΔHvap = 38.56 kJ/mol.',
-          score: 0.942,
-          document_title: 'Thermodynamics of Ethanol',
-          page_number: 3,
-          score_breakdown: { semantic_score: 0.95, lexical_score: 0.88, rerank_score: 0.942 },
-        },
-        {
-          chunk_id: 'c-002',
-          content: 'Vapor-liquid equilibrium (VLE) data for ethanol-water binary mixtures at 101.3 kPa shows positive deviation from Raoult Law.',
-          score: 0.887,
-          document_title: 'Binary Phase Equilibria',
-          page_number: 7,
-          score_breakdown: { semantic_score: 0.89, lexical_score: 0.84, rerank_score: 0.887 },
-        },
-      ]);
+      setResults([]);
+      setErrorMsg(err?.response?.data?.detail || 'Hybrid search endpoint returned no matches or error.');
     } finally {
       setIsSearching(false);
     }

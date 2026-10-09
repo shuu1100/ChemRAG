@@ -49,20 +49,24 @@ const sampleLiterature: DocumentItem[] = [
 ];
 
 export const DocumentsPage: React.FC = () => {
-  const [documents, setDocuments] = useState<DocumentItem[]>(sampleLiterature);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const loadDocuments = async () => {
+    setIsLoading(true);
     try {
       const docs = await documentsApi.listDocuments();
-      if (docs && docs.length > 0) {
-        setDocuments(docs);
-      }
+      setDocuments(docs || []);
     } catch (err) {
-      console.warn('Backend documents API offline or empty, showing loaded workspace literature:', err);
+      console.warn('Backend documents API unavailable:', err);
+      setDocuments([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 

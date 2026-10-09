@@ -9,14 +9,16 @@ import {
   LogoIcon,
   ServerIcon,
 } from '../components/common/Icons';
-import { healthApi } from '../services/api';
-import { HealthResponse } from '../types';
+import { documentsApi, healthApi } from '../services/api';
+import { DocumentItem, HealthResponse } from '../types';
 
 export const DashboardPage: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [docCount, setDocCount] = useState<number | null>(null);
 
   useEffect(() => {
     healthApi.getHealth().then(setHealth).catch(console.error);
+    documentsApi.listDocuments().then((docs: DocumentItem[]) => setDocCount(docs?.length ?? 0)).catch(() => setDocCount(0));
   }, []);
 
   return (
@@ -58,35 +60,39 @@ export const DashboardPage: React.FC = () => {
             <span>DOCUMENTS</span>
             <DocumentsIcon size={18} className="text-cyan-400" />
           </div>
-          <div className="text-3xl font-extrabold text-white mt-2 font-mono">142</div>
-          <div className="text-[11px] text-emerald-400 mt-1 font-mono font-medium">128 Processed • 0 Failed</div>
+          <div className="text-3xl font-extrabold text-white mt-2 font-mono">
+            {docCount !== null ? docCount : '—'}
+          </div>
+          <div className="text-[11px] text-emerald-400 mt-1 font-mono font-medium">Ingested in Workspace</div>
         </div>
 
         <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 shadow-md">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold font-mono">
-            <span>VECTOR CHUNKS</span>
+            <span>VECTOR INDEX</span>
             <DatabaseIcon size={18} className="text-cyan-400" />
           </div>
-          <div className="text-3xl font-extrabold text-white mt-2 font-mono">28,410</div>
-          <div className="text-[11px] text-cyan-400 mt-1 font-mono font-medium">3072d • HNSW Index Active</div>
+          <div className="text-3xl font-extrabold text-white mt-2 font-mono">3072d</div>
+          <div className="text-[11px] text-cyan-400 mt-1 font-mono font-medium">pgvector HNSW Active</div>
         </div>
 
         <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 shadow-md">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold font-mono">
-            <span>CHEMICAL ENTITIES</span>
+            <span>CHEMISTRY ENGINE</span>
             <ChemicalIcon size={18} className="text-cyan-400" />
           </div>
-          <div className="text-3xl font-extrabold text-white mt-2 font-mono">3,892</div>
+          <div className="text-3xl font-extrabold text-white mt-2 font-mono">RDKit</div>
           <div className="text-[11px] text-indigo-400 mt-1 font-mono font-medium">SMILES & InChI Normalized</div>
         </div>
 
         <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 shadow-md">
           <div className="flex items-center justify-between text-slate-400 text-xs font-semibold font-mono">
-            <span>CITATION ACCURACY</span>
+            <span>SYSTEM STATUS</span>
             <EvaluationIcon size={18} className="text-cyan-400" />
           </div>
-          <div className="text-3xl font-extrabold text-white mt-2 font-mono">99.4%</div>
-          <div className="text-[11px] text-emerald-400 mt-1 font-mono font-medium">Zero Hallucination Verified</div>
+          <div className="text-3xl font-extrabold text-emerald-400 mt-2 font-mono">
+            {health?.status === 'ok' ? 'HEALTHY' : 'ONLINE'}
+          </div>
+          <div className="text-[11px] text-emerald-400 mt-1 font-mono font-medium">FastAPI Backend Connected</div>
         </div>
       </div>
 

@@ -252,6 +252,50 @@ async def upload_document(
 
 
 @router.get(
+    "",
+    response_model=list[DocumentResponse],
+    summary="List all workspace documents",
+)
+async def list_documents(
+    session: AsyncSession = Depends(get_db_session),
+) -> list[DocumentResponse]:
+    """Fetch all active non-deleted documents in the workspace."""
+    stmt = (
+        select(Document)
+        .where(Document.deleted_at.is_(None))
+        .order_by(Document.created_at.desc())
+    )
+    result = await session.execute(stmt)
+    docs = result.scalars().all()
+
+    return [
+        DocumentResponse(
+            id=doc.id,
+            organization_id=doc.organization_id,
+            uploaded_by_id=doc.uploaded_by_id,
+            filename=doc.filename,
+            file_size_bytes=doc.file_size_bytes,
+            content_type=doc.content_type,
+            doc_type=doc.doc_type.value,
+            genre=doc.genre.value,
+            genre_confidence=doc.genre_confidence,
+            sha256_hash=doc.sha256_hash,
+            title=doc.title,
+            doi=doc.doi,
+            journal=doc.journal,
+            publication_year=doc.publication_year,
+            abstract=doc.abstract,
+            processing_state=doc.processing_state.value,
+            processing_error=doc.processing_error,
+            is_public=bool(doc.is_public),
+            created_at=doc.created_at,
+            updated_at=doc.updated_at,
+        )
+        for doc in docs
+    ]
+
+
+@router.get(
     "/{document_id}",
     response_model=DocumentResponse,
     summary="Get document details by ID",
@@ -294,6 +338,101 @@ async def get_document(
         is_public=bool(doc.is_public),
         created_at=doc.created_at,
         updated_at=doc.updated_at,
+    )
+
+
+@router.delete(
+    "/{document_id}",
+    status_code=status.HTTP_200_OK,
+    summary="Soft-delete document by ID",
+)
+async def delete_document(
+    document_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict[str, str]:
+    """Soft-delete document by ID."""
+    stmt = (
+        select(Document)
+        .where(Document.id == document_id, Document.deleted_at.is_(None))
+    )
+    result = await session.execute(stmt)
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found.",
+        )
+
+    doc.deleted_at = datetime.now(timezone.utc)
+    await session.commit()
+    return {"status": "deleted", "id": str(document_id)}
+
+
+@router.post(
+    "/{document_id}/process",
+    response_model=IngestionJobResponse,
+    summary="Trigger processing for a document",
+)
+async def process_document(
+    document_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_db_session),
+) -> IngestionJobResponse:
+    """Trigger or restart processing for document."""
+    stmt = (
+        select(Document)
+        .where(Document.id == document_id, Document.deleted_at.is_(None))
+    )
+    result = await session.execute(stmt)
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found.",
+        )
+
+    # Check for existing job or create new job
+    job_stmt = (
+        select(IngestionJob)
+        .where(IngestionJob.document_id == document_id)
+        .order_by(IngestionJob.created_at.desc())
+    )
+    job_res = await session.execute(job_stmt)
+    job = job_res.scalar_one_or_none()
+
+    if not job:
+        job = IngestionJob(
+            document_id=doc.id,
+            organization_id=doc.organization_id,
+            state=ProcessingState.PENDING,
+            current_phase=IngestionStage.UPLOAD.value,
+            progress_pct=0.0,
+            config={"stages_completed": [IngestionStage.UPLOAD.value]},
+        )
+        session.add(job)
+        await session.commit()
+        await session.refresh(job)
+    else:
+        job.state = ProcessingState.QUEUED
+        job.error_message = None
+        await session.commit()
+        await session.refresh(job)
+
+    background_tasks.add_task(run_ingestion_background, job.id)
+
+    completed_stages = job.config.get("stages_completed", []) if job.config else []
+    return IngestionJobResponse(
+        id=job.id,
+        document_id=job.document_id,
+        organization_id=job.organization_id,
+        state=job.state.value,
+        current_phase=job.current_phase,
+        progress_pct=job.progress_pct,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        error_message=job.error_message,
+        phase_timings=job.phase_timings,
+        stages_completed=completed_stages,
     )
 
 

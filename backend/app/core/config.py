@@ -163,9 +163,9 @@ class LLMConfig(BaseSettings):
 
     enabled: bool = True
     provider: LLMProvider = LLMProvider.OPENAI
-    base_url: str = "https://api.openai.com/v1"
+    base_url: str = "https://generativelanguage.googleapis.com"
     api_key: SecretStr | None = None
-    model: str = "gpt-4o"
+    model: str = "gemini-2.5-flash"
     temperature: float = Field(default=0.1, ge=0.0, le=2.0)
     max_tokens: int = Field(default=4096, ge=1, le=128000)
     timeout: int = Field(default=60, ge=1, le=600)
@@ -173,6 +173,29 @@ class LLMConfig(BaseSettings):
     rate_limit_rpm: int = Field(default=500, ge=1)
 
     model_config = SettingsConfigDict(env_prefix="LLM_", extra="ignore")
+
+    @property
+    def effective_api_key(self) -> SecretStr | None:
+        """Resolve Gemini API key from GEMINI_API_KEY, Gemini_API_Key, GOOGLE_API_KEY, or LLM_API_KEY."""
+        val = (
+            os.getenv("GEMINI_API_KEY")
+            or os.getenv("Gemini_API_Key")
+            or os.getenv("GOOGLE_API_KEY")
+            or (self.api_key.get_secret_value() if self.api_key else None)
+        )
+        return SecretStr(val.strip()) if val and val.strip() else None
+
+    @property
+    def effective_model(self) -> str:
+        """Resolve model name from GEMINI_MODEL or LLM_MODEL."""
+        val = (
+            os.getenv("GEMINI_MODEL")
+            or os.getenv("Gemini_Model")
+            or os.getenv("LLM_MODEL")
+        )
+        if val and val.strip() and val.strip().lower() != "gpt-4o":
+            return val.strip()
+        return "gemini-2.5-flash"
 
 
 class EmbeddingConfig(BaseSettings):

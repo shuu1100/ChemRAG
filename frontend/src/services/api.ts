@@ -7,7 +7,7 @@ import {
   IngestionJob,
 } from '../types';
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || '/api/v1';
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,
@@ -143,6 +143,24 @@ export const citationsApi = {
       viewport_width: viewportWidth,
       viewport_height: viewportHeight,
     });
+    return res.data;
+  },
+};
+
+export const chatApi = {
+  sendQuery: async (query: string, conversationId?: string): Promise<any> => {
+    const res = await apiClient.post('/chat', {
+      query,
+      conversation_id: conversationId,
+    });
+    return res.data;
+  },
+  getTrace: async (runId: string): Promise<any> => {
+    const res = await apiClient.get(`/chat/trace/${runId}`);
+    return res.data;
+  },
+  getHistory: async (conversationId: string): Promise<any[]> => {
+    const res = await apiClient.get(`/chat/history/${conversationId}`);
     return res.data;
   },
 };

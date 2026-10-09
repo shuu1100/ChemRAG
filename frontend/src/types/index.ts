@@ -50,8 +50,8 @@ export interface CitationItem {
 }
 
 export interface AgentStepTrace {
-  agent_name: 'Planner' | 'Retriever' | 'Reranker' | 'Chemistry Validator' | 'Analytics' | 'Safety' | 'Aggregator';
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'bypassed';
+  agent_name: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'bypassed' | 'blocked';
   timestamp: string;
   summary: string;
   metrics?: Record<string, any>;

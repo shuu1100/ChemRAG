@@ -13,10 +13,16 @@ from backend.app.api.v1.endpoints.evaluation import router as evaluation_router
 from backend.app.api.v1.endpoints.metadata import router as metadata_router
 from backend.app.api.v1.endpoints.search import router as search_router
 
+from backend.app.api.v1.endpoints.chat import router as chat_router
+from backend.app.api.v1.endpoints.observability import router as observability_router
+
 router = APIRouter()
 
 # Health / readiness (always registered)
 router.include_router(health_router, prefix="/health", tags=["Health"])
+
+# Chat & Multi-Agent Orchestration (Phase 11 / Prompt 15.1)
+router.include_router(chat_router, prefix="/chat", tags=["Chat"])
 
 # Document ingestion & management (Phase 03)
 router.include_router(documents_router, prefix="/documents", tags=["Documents"])
@@ -35,6 +41,9 @@ router.include_router(metadata_router, prefix="/metadata", tags=["Metadata"])
 
 # System Evaluation & RAGAS Benchmarks (Phase 17)
 router.include_router(evaluation_router, prefix="/evaluation", tags=["Evaluation"])
+
+# Observability, Telemetry & Cost Tracking (Phase 18)
+router.include_router(observability_router, prefix="/observability", tags=["Observability"])
 # router.include_router(agents_router,    prefix="/agents",    tags=["Agents"])      # Phase 11
 # router.include_router(auth_router,      prefix="/auth",      tags=["Auth"])        # Phase 19
 

@@ -177,6 +177,8 @@ class AggregatorAgent:
 
     async def run(self, state: AgentState) -> AgentState:
         """Run aggregator node in the LangGraph graph."""
+        from backend.app.services.gemini_service import get_gemini_service
+
         scratchpad = list(state.get("internal_scratchpad", []))
         tool_calls = list(state.get("tool_calls", []))
 
@@ -188,8 +190,60 @@ class AggregatorAgent:
         if contradictions:
             scratchpad.append(f"[AggregatorAgent] Detected {len(contradictions)} conflicting sources")
 
-        # 2. Assemble clean response (without scratchpad)
-        answer = self.assemble_answer(state, contradictions)
+        safety_dec = state.get("safety_decision")
+        if safety_dec and not safety_dec.is_safe:
+            answer = (
+                f"**Request Restricted by Chemical Safety Policy**\n\n"
+                f"{safety_dec.reason}\n\n"
+                f"ChemRAG strictly prevents assistance with the synthesis, optimization, or weaponization "
+                f"of restricted chemical agents, explosives, or illicit substances."
+            )
+        else:
+            # 2. Try Gemini LLM synthesis
+            gemini_service = get_gemini_service()
+            gemini_res = await gemini_service.generate_grounded_answer(
+                query=state.get("query", ""),
+                retrieved_passages=[
+                    {
+                        "citation_id": f"CIT-{idx+1:03d}",
+                        "document_id": getattr(c, "document_id", ""),
+                        "page_number": getattr(c, "page_number", None),
+                        "content": getattr(c, "content", ""),
+                    }
+                    for idx, c in enumerate(state.get("retrieved_chunks", []))
+                ],
+                chemical_metadata=[
+                    {
+                        "name": getattr(ent, "name", ""),
+                        "smiles": getattr(ent, "canonical_smiles", getattr(ent, "smiles", "")),
+                        "molecular_weight": getattr(ent, "molecular_weight", None),
+                        "molecular_formula": getattr(ent, "molecular_formula", ""),
+                    }
+                    for ent in state.get("chemical_entities", [])
+                ],
+                calculation_results=[
+                    {
+                        "calculation_type": getattr(calc, "calculation_type", ""),
+                        "result_value": getattr(calc, "result_value", ""),
+                        "units": getattr(calc, "units", ""),
+                        "formula_applied": getattr(calc, "formula_applied", ""),
+                    }
+                    for calc in state.get("calculation_results", [])
+                ],
+            )
+
+            if gemini_res.get("status") == "success" and gemini_res.get("answer"):
+                answer = gemini_res["answer"]
+                citations_str = self.format_citations(state.get("citations", []))
+                if citations_str and citations_str not in answer:
+                    answer = f"{answer}\n\n{citations_str}"
+                scratchpad.append(f"[AggregatorAgent] Gemini LLM synthesis succeeded using model {gemini_res.get('model_used')}")
+            else:
+                status = gemini_res.get("status")
+                detail = gemini_res.get("error_detail", "")
+                scratchpad.append(f"[AggregatorAgent] Gemini synthesis status ({status}): {detail}. Falling back to structured RAG synthesizer.")
+                answer = self.assemble_answer(state, contradictions)
+
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
 
         # Calculate overall confidence
@@ -228,3 +282,4 @@ class AggregatorAgent:
             "subtasks": subtasks,
             "internal_scratchpad": scratchpad,
         }
+

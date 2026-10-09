@@ -18,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from backend.app.db.base import Base
 from backend.app.db.mixins import TimestampMixin, UUIDPrimaryKeyMixin
@@ -90,8 +90,8 @@ class IngestionJob(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     error_traceback: Mapped[str | None] = mapped_column(Text, nullable=True)
-    phase_timings: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # {phase: seconds}
-    config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    phase_timings: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)  # {phase: seconds}
+    config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     document: Mapped["Document"] = relationship("Document", back_populates="ingestion_jobs")  # type: ignore[name-defined]
 
@@ -118,7 +118,7 @@ class RetrievalQuery(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     query_text: Mapped[str] = mapped_column(Text, nullable=False)
     query_embedding_model: Mapped[str | None] = mapped_column(String(256), nullable=True)
-    filters: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    filters: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     strategy: Mapped[str | None] = mapped_column(String(64), nullable=True)  # hybrid, dense, sparse
     top_k: Mapped[int] = mapped_column(Integer, default=10)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -181,12 +181,12 @@ class AgentRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     # Input
     user_query: Mapped[str] = mapped_column(Text, nullable=False)
-    query_filters: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    query_filters: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     # Output
     final_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
-    answer_citations: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    answer_citations: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
     # Graph execution state (for LangGraph checkpointing)
-    graph_state: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    graph_state: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     langgraph_thread_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
     # Metrics
     total_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -215,8 +215,8 @@ class ToolCall(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     tool_name: Mapped[str] = mapped_column(String(128), nullable=False)
     call_index: Mapped[int] = mapped_column(Integer, default=0)
-    input_args: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    output: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    input_args: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    output: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     latency_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -253,7 +253,7 @@ class SafetyEvent(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     input_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     reasoning: Mapped[str | None] = mapped_column(Text, nullable=True)
-    flagged_content: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    flagged_content: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
     reviewed_by_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True,
     )
@@ -273,12 +273,12 @@ class EvaluationRun(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     name: Mapped[str] = mapped_column(String(256), nullable=False)
     dataset_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
-    config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     state: Mapped[ProcessingState] = mapped_column(
         SAEnum(ProcessingState, name="processing_state_enum"), nullable=False,
         default=ProcessingState.PENDING,
     )
-    metrics_summary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    metrics_summary: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     case_count: Mapped[int] = mapped_column(Integer, default=0)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -297,7 +297,7 @@ class EvaluationCase(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     question: Mapped[str] = mapped_column(Text, nullable=False)
     ground_truth: Mapped[str | None] = mapped_column(Text, nullable=True)
     generated_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
-    retrieved_contexts: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    retrieved_contexts: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
     faithfulness_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     answer_relevancy_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     context_precision_score: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -339,6 +339,6 @@ class AuditLog(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)  # IPv6 max
     user_agent: Mapped[str | None] = mapped_column(String(512), nullable=True)
     request_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    extra: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    extra: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     success: Mapped[bool] = mapped_column(Boolean, default=True)
     error_detail: Mapped[str | None] = mapped_column(Text, nullable=True)

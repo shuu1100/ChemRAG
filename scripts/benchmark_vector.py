@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 import sys
 import time
-from typing import Any, List
+from typing import Any, List, cast
 
 import numpy as np
 
@@ -24,7 +24,7 @@ def generate_random_vectors(count: int, dim: int) -> List[List[float]]:
     vectors = np.random.randn(count, dim).astype(np.float32)
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     normalized = vectors / (norms + 1e-10)
-    return normalized.tolist()
+    return cast(List[List[float]], normalized.tolist())
 
 
 def calculate_storage_footprint(dimensions: int, count: int = 10000) -> dict[str, float]:

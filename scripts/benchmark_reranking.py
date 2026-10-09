@@ -95,11 +95,13 @@ def generate_evaluation_dataset(target_pool_size: int = 100) -> list[dict[str, A
 
     dataset = []
     for tc in test_cases:
+        target_info: dict[str, Any] = tc["target"]  # type: ignore[assignment]
+        target_text = str(target_info["text"])
         target_chunk = ScoredChunk(
             chunk_id=uuid.uuid4(),
             document_id=uuid.uuid4(),
-            content=tc["target"]["text"],
-            retrieval_text=tc["target"]["text"],
+            content=target_text,
+            retrieval_text=target_text,
             score=0.56,  # RRF score before reranking (initially ranks around rank 15 due to lexical overlap noise)
             rank=15,
             retrieval_mode="hybrid_rrf",
@@ -108,7 +110,7 @@ def generate_evaluation_dataset(target_pool_size: int = 100) -> list[dict[str, A
 
         candidate_pool: list[ScoredChunk] = [target_chunk]
         # Expand distractors up to target_pool_size
-        raw_distractors = tc["distractors"]
+        raw_distractors: list[str] = tc["distractors"]  # type: ignore[assignment]
         idx = 0
         while len(candidate_pool) < target_pool_size:
             d_text = raw_distractors[idx % len(raw_distractors)]

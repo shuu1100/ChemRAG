@@ -22,6 +22,7 @@ from typing import Any, Optional
 from backend.app.agents.state import (
     AgentState,
     CalculationRecord,
+    SubTaskStatus,
     ToolCallRecord,
 )
 from backend.app.core.logging import get_logger
@@ -360,7 +361,7 @@ class AnalyticsAgent:
         subtasks = list(state.get("subtasks", []))
         for st in subtasks:
             if st.target_agent == "analytics":
-                st.status = "completed"
+                st.status = SubTaskStatus.COMPLETED
                 st.output_data = {"calculations_performed": len(records)}
 
         return {

@@ -101,7 +101,7 @@ class SafetyToolGuard:
         extracted_text = ""
         entities_list: list[str] = []
 
-        def _extract_from_dict(d: dict) -> None:
+        def _extract_from_dict(d: dict[str, Any]) -> None:
             """Recursively pull string values from a dict into extracted_text and entities_list."""
             nonlocal extracted_text
             for k, v in d.items():
@@ -193,7 +193,7 @@ class SafetyToolGuard:
         return result
 
 
-def guarded_tool(action_name: str, guard: Optional[SafetyToolGuard] = None):
+def guarded_tool(action_name: str, guard: Optional[SafetyToolGuard] = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """
     Decorator to wrap chemistry tools with non-bypassable Safety Guard.
     Usage:
@@ -203,9 +203,9 @@ def guarded_tool(action_name: str, guard: Optional[SafetyToolGuard] = None):
     """
     active_guard = guard or SafetyToolGuard()
 
-    def decorator(fn: Callable[..., Any]):
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
-        async def wrapper(*args: Any, **kwargs: Any):
+        async def wrapper(*args: Any, **kwargs: Any) -> Any:
             user_role = kwargs.pop("user_role", UserRole.RESEARCHER)
             doc_ctx = kwargs.pop("document_context", None)
             session = kwargs.pop("session", None)

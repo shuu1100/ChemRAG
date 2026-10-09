@@ -25,15 +25,15 @@ const mockExperiments = [
 
 export const ExperimentsPage: React.FC = () => {
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <div>
-        <h2 className="text-2xl font-black text-white tracking-tight">Experimental Data & Reaction Extraction</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight">Experimental Data & Reaction Extraction</h2>
         <p className="text-xs text-slate-400 mt-1">
           Structured experimental parameter extraction from scholarly PDF tables, text, and chemical reaction schema.
         </p>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-md">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-950 border-b border-slate-800 text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">
@@ -47,13 +47,13 @@ export const ExperimentsPage: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-slate-800 text-xs font-mono">
             {mockExperiments.map((exp) => (
-              <tr key={exp.id} className="hover:bg-slate-800/50 transition-colors">
+              <tr key={exp.id} className="hover:bg-slate-800/60 transition-colors">
                 <td className="p-4 font-bold text-slate-200">{exp.reaction_name}</td>
                 <td className="p-4 text-emerald-400 font-bold">{exp.yield_pct}%</td>
                 <td className="p-4 text-slate-300">{exp.temp}</td>
-                <td className="p-4 text-cyan-400">{exp.catalyst}</td>
+                <td className="p-4 text-cyan-400 font-semibold">{exp.catalyst}</td>
                 <td className="p-4 text-slate-400">{exp.solvent}</td>
-                <td className="p-4 text-slate-400 font-sans">
+                <td className="p-4 text-slate-300 font-sans">
                   <span className="px-1.5 py-0.5 text-[10px] font-mono text-cyan-400 bg-cyan-950 border border-cyan-800 rounded mr-1.5 font-bold">
                     [{exp.citation_id}]
                   </span>

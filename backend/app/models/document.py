@@ -20,7 +20,7 @@ from backend.app.db.base import Base
 from backend.app.db.mixins import SoftDeleteMixin, TimestampMixin, UUIDPrimaryKeyMixin
 
 import enum
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from backend.app.models.user import Organization, User
@@ -123,12 +123,12 @@ class Document(Base, UUIDPrimaryKeyMixin, TimestampMixin, SoftDeleteMixin):
     sha256_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     # Bibliographic metadata (enriched from GROBID)
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
-    authors: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    authors: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
     doi: Mapped[str | None] = mapped_column(String(256), nullable=True, index=True)
     journal: Mapped[str | None] = mapped_column(String(512), nullable=True)
     publication_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     abstract: Mapped[str | None] = mapped_column(Text, nullable=True)
-    keywords: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    keywords: Mapped[list[Any] | None] = mapped_column(JSONB, nullable=True)
     # State
     processing_state: Mapped[ProcessingState] = mapped_column(
         SAEnum(ProcessingState, name="processing_state_enum"), nullable=False,
@@ -166,7 +166,7 @@ class DocumentVersion(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     is_current: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     parser_name: Mapped[str] = mapped_column(String(128), nullable=False)
     parser_version: Mapped[str] = mapped_column(String(64), nullable=False)
-    parser_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    parser_config: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     processing_state: Mapped[ProcessingState] = mapped_column(
         SAEnum(ProcessingState, name="processing_state_enum"), nullable=False,
         default=ProcessingState.PENDING,

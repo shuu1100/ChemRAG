@@ -10,6 +10,7 @@ Tests every configuration group for:
 from __future__ import annotations
 
 import os
+from typing import Generator
 
 import pytest
 
@@ -44,7 +45,7 @@ from backend.app.core.config import (
 
 
 @pytest.fixture(autouse=True)
-def clear_settings_cache() -> None:
+def clear_settings_cache() -> Generator[None, None, None]:
     """Ensure a fresh Settings instance per test."""
     get_settings.cache_clear()
     yield
@@ -133,7 +134,7 @@ class TestDatabaseConfig:
 
     def test_sync_url(self) -> None:
         db = DatabaseConfig()
-        assert db.sync_url.startswith("postgresql+psycopg2://")
+        assert db.sync_url.startswith("postgresql+psycopg://")
 
     def test_env_override(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("POSTGRES_HOST", "db.prod.example.com")
@@ -212,7 +213,7 @@ class TestEmbeddingConfig:
 
     def test_dimensions_bounds(self) -> None:
         with pytest.raises(Exception):
-            EmbeddingConfig(dimensions=10)  # below minimum
+            EmbeddingConfig(dimensions=10)  # type: ignore # below minimum
 
 
 # ─────────────────────────────────────────────────

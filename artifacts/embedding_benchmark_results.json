@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-06T15:51:18Z",
+  "timestamp": "2026-10-09T08:25:57Z",
   "dimensions": 3072,
   "models": {
     "text": "deterministic-local-v1",
@@ -15,9 +15,9 @@
       "ndcg@3": 0.2261859507142915,
       "ndcg@5": 0.3510065430524243,
       "ndcg@10": 0.44479284669611924,
-      "latency_mean_ms": 2.983450000465382,
-      "latency_p95_ms": 3.1923300030030077,
-      "latency_p99_ms": 3.233586005444522
+      "latency_mean_ms": 13.801199998124503,
+      "latency_p95_ms": 17.995339995104583,
+      "latency_p99_ms": 19.352827995753614
     },
     "chemical_only": {
       "mrr": 1.0,
@@ -28,9 +28,9 @@
       "ndcg@3": 1.0,
       "ndcg@5": 1.0,
       "ndcg@10": 1.0,
-      "latency_mean_ms": 3.1068499993125442,
-      "latency_p95_ms": 3.9104199979192336,
-      "latency_p99_ms": 4.269123997291899
+      "latency_mean_ms": 12.44308999957866,
+      "latency_p95_ms": 15.298734999305449,
+      "latency_p99_ms": 16.448466997462674
     },
     "combined_hybrid": {
       "mrr": 1.0,
@@ -41,9 +41,9 @@
       "ndcg@3": 1.0,
       "ndcg@5": 1.0,
       "ndcg@10": 1.0,
-      "latency_mean_ms": 0.004219999391352758,
-      "latency_p95_ms": 0.0053949974244460455,
-      "latency_p99_ms": 0.005718999891541898
+      "latency_mean_ms": 0.06568999888258986,
+      "latency_p95_ms": 0.24841499944159287,
+      "latency_p99_ms": 0.27984300038951915
     }
   },
   "storage": {
@@ -54,7 +54,7 @@
     "storage_mb_per_10k_vectors_float16": 58.59
   },
   "encoding_latencies_ms": {
-    "text_batch_10": 13.41,
-    "chemical_batch_10": 21.81
+    "text_batch_10": 62.58,
+    "chemical_batch_10": 141.63
   }
 }

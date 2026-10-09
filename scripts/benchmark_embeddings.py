@@ -234,17 +234,17 @@ async def run_embedding_benchmark(dimensions: int = 3072, output_path: str | Non
 
     # 2. Benchmark Ingestion / Encoding Latency
     t0 = time.perf_counter()
-    doc_texts = [d["text"] for d in BENCHMARK_DOCUMENTS]
+    doc_texts: list[str] = [str(d["text"]) for d in BENCHMARK_DOCUMENTS]
     text_emb_results = await text_service.embed_texts(doc_texts)
     text_encoding_ms = (time.perf_counter() - t0) * 1000.0
 
     t0 = time.perf_counter()
-    doc_smiles = [d["smiles"] for d in BENCHMARK_DOCUMENTS]
+    doc_smiles: list[str] = [str(d["smiles"]) for d in BENCHMARK_DOCUMENTS]
     chem_emb_results = await chem_service.embed_smiles_list(doc_smiles)
     chem_encoding_ms = (time.perf_counter() - t0) * 1000.0
 
-    doc_text_vectors = {d["id"]: res.vector for d, res in zip(BENCHMARK_DOCUMENTS, text_emb_results)}
-    doc_chem_vectors = {d["id"]: res.vector for d, res in zip(BENCHMARK_DOCUMENTS, chem_emb_results)}
+    doc_text_vectors = {str(d["id"]): res.vector for d, res in zip(BENCHMARK_DOCUMENTS, text_emb_results)}
+    doc_chem_vectors = {str(d["id"]): res.vector for d, res in zip(BENCHMARK_DOCUMENTS, chem_emb_results)}
 
     # 3. Query Evaluation
     modes = ["text_only", "chemical_only", "combined_hybrid"]
@@ -254,9 +254,9 @@ async def run_embedding_benchmark(dimensions: int = 3072, output_path: str | Non
     alpha = 0.65  # Weight for text similarity in combined hybrid
 
     for q in BENCHMARK_QUERIES:
-        q_text = q["query_text"]
-        q_smiles = q["query_smiles"]
-        target = q["relevant_doc_id"]
+        q_text = str(q["query_text"])
+        q_smiles = str(q["query_smiles"])
+        target = str(q["relevant_doc_id"])
 
         # --- A. Text Only ---
         t_start = time.perf_counter()
@@ -266,7 +266,7 @@ async def run_embedding_benchmark(dimensions: int = 3072, output_path: str | Non
             doc_id: cosine_similarity(q_vec, vec)
             for doc_id, vec in doc_text_vectors.items()
         }
-        ranked_text = sorted(text_scores.keys(), key=lambda d: text_scores[d], reverse=True)
+        ranked_text: list[str] = sorted(text_scores.keys(), key=lambda d: text_scores[d], reverse=True)
         q_lat = (time.perf_counter() - t_start) * 1000.0
         query_latencies["text_only"].append(q_lat)
         mode_metrics["text_only"].append(calculate_metrics(ranked_text, target))
@@ -279,7 +279,7 @@ async def run_embedding_benchmark(dimensions: int = 3072, output_path: str | Non
             doc_id: cosine_similarity(q_chem_vec, vec)
             for doc_id, vec in doc_chem_vectors.items()
         }
-        ranked_chem = sorted(chem_scores.keys(), key=lambda d: chem_scores[d], reverse=True)
+        ranked_chem: list[str] = sorted(chem_scores.keys(), key=lambda d: chem_scores[d], reverse=True)
         q_lat = (time.perf_counter() - t_start) * 1000.0
         query_latencies["chemical_only"].append(q_lat)
         mode_metrics["chemical_only"].append(calculate_metrics(ranked_chem, target))
@@ -290,7 +290,7 @@ async def run_embedding_benchmark(dimensions: int = 3072, output_path: str | Non
             doc_id: alpha * text_scores[doc_id] + (1.0 - alpha) * chem_scores[doc_id]
             for doc_id in doc_text_vectors.keys()
         }
-        ranked_hybrid = sorted(hybrid_scores.keys(), key=lambda d: hybrid_scores[d], reverse=True)
+        ranked_hybrid: list[str] = sorted(hybrid_scores.keys(), key=lambda d: hybrid_scores[d], reverse=True)
         q_lat = (time.perf_counter() - t_start) * 1000.0
         query_latencies["combined_hybrid"].append(q_lat)
         mode_metrics["combined_hybrid"].append(calculate_metrics(ranked_hybrid, target))

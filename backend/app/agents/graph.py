@@ -10,7 +10,7 @@ Fulfills Phase 11 / Prompt 11.1 - 11.6 & Exit Criteria:
 from __future__ import annotations
 
 import uuid
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from langgraph.graph import END, START, StateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,7 +80,7 @@ class ChemRAGAgentGraph:
 
     def _build_graph(self) -> Any:
         """Construct the explicit StateGraph and transitions."""
-        builder = StateGraph(AgentState)
+        builder = StateGraph(AgentState)  # type: ignore[arg-type]
 
         # 1. Register explicit nodes
         builder.add_node("planner", self._node_planner)
@@ -131,16 +131,17 @@ class ChemRAGAgentGraph:
 
     async def _node_chemistry(self, state: AgentState) -> AgentState:
         try:
-            return await self.guard.guard_call(
+            res = await self.guard.guard_call(
                 self.chemistry.run,
                 "chemistry_reasoning_and_validation",
                 state,
                 session=self.session,
             )
+            return cast(AgentState, res)
         except SafetyViolationError as exc:
             scratchpad = list(state.get("internal_scratchpad", []))
             scratchpad.append(f"[SafetyGuard] Chemistry tool call blocked: {exc}")
-            return {
+            return cast(AgentState, {
                 **state,
                 "safety_decision": SafetyDecision(
                     is_safe=False,
@@ -149,7 +150,7 @@ class ChemRAGAgentGraph:
                     restricted_action_prevented=True,
                 ),
                 "internal_scratchpad": scratchpad,
-            }
+            })
 
     async def _node_analytics(self, state: AgentState) -> AgentState:
         return await self.analytics.run(state)
@@ -194,4 +195,4 @@ class ChemRAGAgentGraph:
 
         # Invoke the compiled LangGraph workflow asynchronously
         result = await self.graph.ainvoke(initial_state)
-        return result
+        return cast(AgentState, result)

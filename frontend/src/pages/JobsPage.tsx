@@ -23,9 +23,9 @@ const mockJobs = [
 
 export const JobsPage: React.FC = () => {
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <div>
-        <h2 className="text-2xl font-black text-white tracking-tight">Background Processing & Ingestion Jobs</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight">Background Processing & Ingestion Jobs</h2>
         <p className="text-xs text-slate-400 mt-1">
           Asynchronous Celery/Redis worker queues for document parsing, chunking, 3072d vector embedding, and chemical normalization.
         </p>
@@ -41,7 +41,9 @@ export const JobsPage: React.FC = () => {
               </div>
               <span
                 className={`px-2.5 py-0.5 rounded text-[10px] uppercase font-bold ${
-                  job.status === 'completed' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-cyan-950 text-cyan-400 border border-cyan-800 animate-pulse'
+                  job.status === 'completed'
+                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                    : 'bg-cyan-950 text-cyan-400 border border-cyan-800 animate-pulse'
                 }`}
               >
                 {job.status}
@@ -51,7 +53,7 @@ export const JobsPage: React.FC = () => {
             <div className="space-y-1 font-mono text-xs">
               <div className="flex justify-between text-slate-400 text-[11px]">
                 <span>Stage: <strong className="text-cyan-400">{job.stage}</strong></span>
-                <span>{job.progress}%</span>
+                <span className="font-bold text-slate-200">{job.progress}%</span>
               </div>
               <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
                 <div className="bg-cyan-400 h-full transition-all duration-300" style={{ width: `${job.progress}%` }} />

@@ -48,7 +48,7 @@ class SentenceTransformersProvider(BaseEmbeddingProvider):
             timeout=timeout,
             retries=retries,
         )
-        self._model = None
+        self._model: Any = None
         self._model_loaded = False
         self._fallback_provider = DeterministicLocalProvider(
             model_name=f"{model_name}-fallback",
@@ -59,7 +59,7 @@ class SentenceTransformersProvider(BaseEmbeddingProvider):
         )
 
     def _try_load_model(self) -> bool:
-        if self._model_loaded:
+        if self._model_loaded and self._model is not None:
             return True
         from pathlib import Path
         if not Path(self.model_name).exists():
@@ -74,7 +74,7 @@ class SentenceTransformersProvider(BaseEmbeddingProvider):
             return False
 
     async def embed_batch(self, texts: list[str]) -> BatchEmbeddingResult:
-        if not self._try_load_model():
+        if not self._try_load_model() or self._model is None:
             res = await self._fallback_provider.embed_batch(texts)
             updated_results = []
             meta = self.get_metadata()

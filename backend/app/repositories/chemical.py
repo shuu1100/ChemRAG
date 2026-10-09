@@ -8,7 +8,7 @@ from __future__ import annotations
 import uuid
 from typing import List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -27,7 +27,7 @@ class ChemicalRepository(BaseRepository[ChemicalEntity]):
     async def get_by_inchikey(self, inchikey: str) -> Optional[ChemicalEntity]:
         """Find a chemical entity by standard InChIKey."""
         result = await self.session.execute(
-            select(ChemicalEntity).where(ChemicalEntity.inchikey == inchikey)
+            select(ChemicalEntity).where(ChemicalEntity.inchi_key == inchikey)
         )
         return result.scalars().first()
 
@@ -45,7 +45,12 @@ class ChemicalRepository(BaseRepository[ChemicalEntity]):
         pattern = f"%{name_query}%"
         result = await self.session.execute(
             select(ChemicalEntity)
-            .where(ChemicalEntity.canonical_name.ilike(pattern))
+            .where(
+                or_(
+                    ChemicalEntity.common_name.ilike(pattern),
+                    ChemicalEntity.iupac_name.ilike(pattern),
+                )
+            )
             .limit(limit)
         )
         return list(result.scalars().all())

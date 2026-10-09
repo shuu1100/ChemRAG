@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-06T15:51:31Z",
+  "timestamp": "2026-10-09T08:26:14Z",
   "model": "chemrag-cross-encoder-v1",
   "results": {
     "baseline_rrf_no_rerank": {
@@ -17,8 +17,8 @@
       "recall@1": 0.0,
       "recall@5": 0.0,
       "ndcg@5": 0.0,
-      "latency_mean_ms": 0.29,
-      "latency_p95_ms": 0.4,
+      "latency_mean_ms": 0.71,
+      "latency_p95_ms": 0.92,
       "memory_mb_approx": 0.16
     },
     "cross_encoder_pool_20": {
@@ -27,8 +27,8 @@
       "recall@1": 1.0,
       "recall@5": 1.0,
       "ndcg@5": 1.0,
-      "latency_mean_ms": 0.47,
-      "latency_p95_ms": 0.54,
+      "latency_mean_ms": 1.11,
+      "latency_p95_ms": 1.61,
       "memory_mb_approx": 0.31
     },
     "cross_encoder_pool_50": {
@@ -37,8 +37,8 @@
       "recall@1": 1.0,
       "recall@5": 1.0,
       "ndcg@5": 1.0,
-      "latency_mean_ms": 1.33,
-      "latency_p95_ms": 1.41,
+      "latency_mean_ms": 2.72,
+      "latency_p95_ms": 3.78,
       "memory_mb_approx": 0.78
     },
     "cross_encoder_pool_100": {
@@ -47,8 +47,8 @@
       "recall@1": 1.0,
       "recall@5": 1.0,
       "ndcg@5": 1.0,
-      "latency_mean_ms": 2.01,
-      "latency_p95_ms": 2.66,
+      "latency_mean_ms": 3.2,
+      "latency_p95_ms": 3.66,
       "memory_mb_approx": 1.56
     }
   },

@@ -51,6 +51,8 @@ class ChemicalRetriever:
 
     def smiles_to_inchikey(self, smiles: str) -> str | None:
         """Derive standard InChIKey from SMILES via RDKit."""
+        if Chem is None:
+            return None
         try:
             mol = Chem.MolFromSmiles(smiles.strip())
             if mol is not None:

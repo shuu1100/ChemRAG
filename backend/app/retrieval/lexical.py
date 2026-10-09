@@ -145,13 +145,13 @@ class PostgreSQLLexicalRetriever(BaseLexicalRetriever):
                 if has_exact_match:
                     score_val += 1.0  # Technical identifier exact match boost
 
-                bbox_dict = None
-                if chunk.bbox_x0 is not None:
+                bbox_dict: dict[str, float] | None = None
+                if chunk.bbox_x0 is not None and chunk.bbox_y0 is not None and chunk.bbox_x1 is not None and chunk.bbox_y1 is not None:
                     bbox_dict = {
-                        "x0": chunk.bbox_x0,
-                        "y0": chunk.bbox_y0,
-                        "x1": chunk.bbox_x1,
-                        "y1": chunk.bbox_y1,
+                        "x0": float(chunk.bbox_x0),
+                        "y0": float(chunk.bbox_y0),
+                        "x1": float(chunk.bbox_x1),
+                        "y1": float(chunk.bbox_y1),
                     }
 
                 scored_chunks.append(
@@ -250,13 +250,13 @@ class PostgreSQLLexicalRetriever(BaseLexicalRetriever):
 
         results: list[ScoredChunk] = []
         for rank, (score, chunk, highlight) in enumerate(top_candidates, start=1):
-            bbox_dict = None
-            if chunk.bbox_x0 is not None:
+            bbox_dict: dict[str, float] | None = None
+            if chunk.bbox_x0 is not None and chunk.bbox_y0 is not None and chunk.bbox_x1 is not None and chunk.bbox_y1 is not None:
                 bbox_dict = {
-                    "x0": chunk.bbox_x0,
-                    "y0": chunk.bbox_y0,
-                    "x1": chunk.bbox_x1,
-                    "y1": chunk.bbox_y1,
+                    "x0": float(chunk.bbox_x0),
+                    "y0": float(chunk.bbox_y0),
+                    "x1": float(chunk.bbox_x1),
+                    "y1": float(chunk.bbox_y1),
                 }
             results.append(
                 ScoredChunk(

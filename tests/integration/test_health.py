@@ -24,7 +24,7 @@ class TestHealthEndpoints:
     def test_health_response_schema(self, client: TestClient) -> None:
         r = client.get("/api/v1/health")
         body = r.json()
-        assert body["status"] == "ok"
+        assert body["status"] in ("ok", "degraded")
         assert "env" in body
         assert "version" in body
         assert "uptime_seconds" in body

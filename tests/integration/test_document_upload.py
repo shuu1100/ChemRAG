@@ -27,14 +27,14 @@ from backend.app.services.ingestion.stages import IngestionStage
 
 
 @pytest.fixture
-def mock_db():
+def mock_db() -> Any:
     """In-memory mock database store for testing endpoints."""
     docs: dict[uuid.UUID, Document] = {}
     versions: dict[uuid.UUID, DocumentVersion] = {}
     jobs: dict[uuid.UUID, IngestionJob] = {}
 
     class MockSession:
-        def add(self, obj):
+        def add(self, obj: Any) -> None:
             if isinstance(obj, Document):
                 if not obj.id:
                     obj.id = uuid.uuid4()
@@ -48,16 +48,16 @@ def mock_db():
                     obj.id = uuid.uuid4()
                 jobs[obj.id] = obj
 
-        async def flush(self):
+        async def flush(self) -> None:
             pass
 
-        async def commit(self):
+        async def commit(self) -> None:
             pass
 
-        async def refresh(self, obj):
+        async def refresh(self, obj: Any) -> None:
             pass
 
-        async def execute(self, statement):
+        async def execute(self, statement: Any) -> Any:
             result = MagicMock()
             query_str = str(statement)
             where_clause = query_str.split("WHERE")[-1] if "WHERE" in query_str else ""
@@ -65,21 +65,19 @@ def mock_db():
                 result.scalar_one_or_none.return_value = getattr(self, "_dup_doc", None)
             elif "documents.id" in where_clause:
                 doc_id = getattr(self, "_requested_doc_id", None)
-                result.scalar_one_or_none.return_value = docs.get(doc_id)
+                result.scalar_one_or_none.return_value = docs.get(doc_id) if doc_id is not None else None
             elif "ingestion_jobs.id" in where_clause:
                 job_id = getattr(self, "_requested_job_id", None)
-                result.scalar_one_or_none.return_value = jobs.get(job_id)
+                result.scalar_one_or_none.return_value = jobs.get(job_id) if job_id is not None else None
             elif "FROM document_versions" in query_str:
                 result.scalar_one_or_none.return_value = list(versions.values())[-1] if versions else None
             else:
                 result.scalar_one_or_none.return_value = None
             return result
 
-
-
     mock_sess = MockSession()
 
-    async def override_get_db():
+    async def override_get_db() -> Any:
         yield mock_sess
 
     app.dependency_overrides[get_db_session] = override_get_db
@@ -88,7 +86,7 @@ def mock_db():
 
 
 @pytest.fixture
-def client(mock_db) -> TestClient:
+def client(mock_db: Any) -> TestClient:
     return TestClient(app)
 
 
@@ -118,7 +116,7 @@ class TestDocumentUploadAPI:
         assert response.status_code == 400
         assert "%PDF-" in response.json()["detail"]
 
-    def test_upload_valid_pdf_creates_pending_job(self, client: TestClient, mock_db) -> None:
+    def test_upload_valid_pdf_creates_pending_job(self, client: TestClient, mock_db: Any) -> None:
         valid_pdf = b"%PDF-1.4\n%Chemical Research Paper\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF"
         files = {"file": ("synthesis_paper.pdf", io.BytesIO(valid_pdf), "application/pdf")}
         org_id = uuid.uuid4()
@@ -136,7 +134,7 @@ class TestDocumentUploadAPI:
         assert body["filename"] == "synthesis_paper.pdf"
         assert len(body["sha256_hash"]) == 64
 
-    def test_duplicate_file_returns_409_conflict(self, client: TestClient, mock_db) -> None:
+    def test_duplicate_file_returns_409_conflict(self, client: TestClient, mock_db: Any) -> None:
         existing_doc_id = uuid.uuid4()
         existing_org_id = uuid.uuid4()
         existing_doc = Document(
@@ -163,7 +161,7 @@ class TestDocumentUploadAPI:
         assert body["document_id"] == str(existing_doc_id)
         assert "Duplicate document detected" in body["message"]
 
-    def test_get_document_by_id(self, client: TestClient, mock_db) -> None:
+    def test_get_document_by_id(self, client: TestClient, mock_db: Any) -> None:
         doc_id = uuid.uuid4()
         doc = Document(
             id=doc_id,
@@ -194,12 +192,12 @@ class TestDocumentUploadAPI:
         assert data["genre"] == "research_paper"
         assert data["genre_confidence"] == 0.88
 
-    def test_get_document_not_found(self, client: TestClient, mock_db) -> None:
+    def test_get_document_not_found(self, client: TestClient, mock_db: Any) -> None:
         mock_db._requested_doc_id = uuid.uuid4()
         response = client.get(f"/api/v1/documents/{uuid.uuid4()}")
         assert response.status_code == 404
 
-    def test_get_job_by_id(self, client: TestClient, mock_db) -> None:
+    def test_get_job_by_id(self, client: TestClient, mock_db: Any) -> None:
         job_id = uuid.uuid4()
         job = IngestionJob(
             id=job_id,
@@ -222,7 +220,7 @@ class TestDocumentUploadAPI:
         assert data["progress_pct"] == 30.0
         assert data["stages_completed"] == ["UPLOAD", "VALIDATE", "STORE"]
 
-    def test_retry_job_resumes(self, client: TestClient, mock_db) -> None:
+    def test_retry_job_resumes(self, client: TestClient, mock_db: Any) -> None:
         job_id = uuid.uuid4()
         job = IngestionJob(
             id=job_id,

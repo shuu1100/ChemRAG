@@ -35,7 +35,7 @@ class DecimerProvider(BaseOCSRProvider):
         # For offline / dev runs, uses extensible prediction handler:
         try:
             # Check if decimer package is available
-            import importlib
+            import importlib.util
             decimer_spec = importlib.util.find_spec("decimer")
             if decimer_spec is not None:
                 # Local package execution

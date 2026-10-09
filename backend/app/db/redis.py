@@ -72,7 +72,7 @@ _redis_client: Any = None
 def get_redis_client() -> Any:
     """Return the singleton Redis client or fallback if not installed."""
     global _redis_client
-    if not HAS_REDIS:
+    if not HAS_REDIS or aioredis is None:
         if _redis_client is None:
             _redis_client = DummyRedisClient()
         return _redis_client
@@ -129,7 +129,8 @@ async def cache_get(key: str) -> Any | None:
         raw = await client.get(key)
         if raw is None:
             return None
-        return json.loads(raw)
+        val: Any = json.loads(raw)
+        return val
     except (RedisConnectionError, RedisTimeoutError) as exc:
         logger.warning("Redis GET failed for key=%s: %s", key, exc)
         return None
@@ -164,7 +165,7 @@ async def cache_delete(key: str) -> bool:
     try:
         client = get_redis_client()
         result = await client.delete(key)
-        return result > 0
+        return bool(int(result) > 0)
     except (RedisConnectionError, RedisTimeoutError) as exc:
         logger.warning("Redis DELETE failed for key=%s: %s", key, exc)
         return False

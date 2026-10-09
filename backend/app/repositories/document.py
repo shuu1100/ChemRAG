@@ -6,7 +6,7 @@ Provides persistence operations for Document and DocumentVersion entities.
 from __future__ import annotations
 
 import uuid
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,7 +27,7 @@ class DocumentRepository(BaseRepository[Document]):
     async def get_by_sha256(self, file_hash_sha256: str) -> Optional[Document]:
         """Find a document by its file SHA-256 hash."""
         result = await self.session.execute(
-            select(Document).where(Document.file_hash_sha256 == file_hash_sha256)
+            select(Document).where(Document.sha256_hash == file_hash_sha256)
         )
         return result.scalars().first()
 
@@ -41,7 +41,7 @@ class DocumentRepository(BaseRepository[Document]):
         return result.scalars().first()
 
     async def add_version(
-        self, document_id: uuid.UUID, version_data: dict
+        self, document_id: uuid.UUID, version_data: dict[str, Any]
     ) -> DocumentVersion:
         """Create a new version for a document."""
         version = DocumentVersion(document_id=document_id, **version_data)

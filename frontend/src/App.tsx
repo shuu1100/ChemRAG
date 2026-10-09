@@ -9,6 +9,7 @@ import { DocumentViewerPage } from './pages/DocumentViewerPage';
 import { EvaluationPage } from './pages/EvaluationPage';
 import { ExperimentsPage } from './pages/ExperimentsPage';
 import { JobsPage } from './pages/JobsPage';
+import { PagePlaceholder } from './pages/PagePlaceholder';
 import { SearchPage } from './pages/SearchPage';
 import { SettingsPage } from './pages/SettingsPage';
 
@@ -27,6 +28,8 @@ export const App: React.FC = () => {
           <Route path="jobs" element={<JobsPage />} />
           <Route path="evaluation" element={<EvaluationPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          {/* Catch-all fallback route */}
+          <Route path="*" element={<PagePlaceholder />} />
         </Route>
       </Routes>
     </BrowserRouter>

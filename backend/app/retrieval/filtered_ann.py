@@ -55,9 +55,9 @@ class FilteredANNScanner:
         scan_limit = max_scan_tuples or self.default_max_scan_tuples
 
         try:
-            await session.execute(text(f"SET LOCAL hnsw.ef_search = {int(ef_search)}"))
+            await session.execute(text(f"SET LOCAL hnsw.ef_search = {ef_search}"))
             await session.execute(text(f"SET LOCAL hnsw.iterative_scan = '{mode}'"))
-            await session.execute(text(f"SET LOCAL hnsw.max_scan_tuples = {int(scan_limit)}"))
+            await session.execute(text(f"SET LOCAL hnsw.max_scan_tuples = {scan_limit}"))
         except Exception as exc:
             logger.debug("Could not set pgvector session scan parameters (expected in SQLite/tests): %s", exc)
 

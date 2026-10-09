@@ -1,7 +1,7 @@
 import React from 'react';
 
 export interface CitationBadgeProps {
-  citationId: str;
+  citationId: string;
   documentTitle?: string;
   pageNumber?: number;
   confidence?: number;

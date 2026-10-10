@@ -8,10 +8,14 @@ chemical notation, and detailed error diagnostics.
 
 from __future__ import annotations
 
-import os
-from typing import Any, List, Optional
-from google import genai
-from google.genai import errors
+try:
+    from google import genai
+    from google.genai import errors
+    GENAI_AVAILABLE = True
+except (ImportError, Exception):
+    genai = None
+    errors = None
+    GENAI_AVAILABLE = False
 
 from backend.app.core.config import get_settings
 from backend.app.core.logging import get_logger
@@ -31,6 +35,10 @@ class GeminiService:
 
     def _get_client(self) -> Optional[genai.Client]:
         """Lazy-initialize Google GenAI client if key is configured."""
+        if not GENAI_AVAILABLE or genai is None:
+            self.logger.warning("google-genai SDK is not installed or available in python environment.")
+            return None
+
         if self._client is not None:
             return self._client
 

@@ -55,6 +55,11 @@ class ChunkPayload:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     @property
+    def contains_chemical_entities(self) -> bool:
+        """Returns True if chunk contains extracted chemical entities."""
+        return len(self.chemical_entities) > 0
+
+    @property
     def content_hash(self) -> str:
         """SHA-256 hash of the raw text for integrity and deduplication."""
         return hashlib.sha256(self.raw_text.encode("utf-8")).hexdigest()

@@ -112,7 +112,10 @@ class IngestionPipelineWorker:
                 job.phase_timings = dict(phase_timings)
 
                 completed_stages.append(stage.value)
-                job.config = dict(job.config, stages_completed=completed_stages)
+                job.config = dict(job.config or {}, stages_completed=completed_stages)
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(job, "config")
+                flag_modified(job, "phase_timings")
                 await session.commit()
 
             # All stages completed
@@ -242,6 +245,7 @@ class IngestionPipelineWorker:
             from backend.app.chunking.chemical_chunker import ChemicalAwareChunker
             from backend.app.parsing.service import ScientificPDFParser
             from backend.app.models.chunk import Chunk
+            from sqlalchemy import delete
             import hashlib
 
             file_bytes = await self.storage.get(document.storage_key)
@@ -251,6 +255,10 @@ class IngestionPipelineWorker:
             except Exception as parse_exc:
                 logger.warning("PDF parser failed during chunking stage: %s", parse_exc)
                 parsed_doc = None
+
+            # Idempotently remove old chunks for this document before creating new ones
+            await session.execute(delete(Chunk).where(Chunk.document_id == document.id))
+            await session.flush()
 
             chunker = ChemicalAwareChunker()
             created_chunks = []
@@ -290,6 +298,7 @@ class IngestionPipelineWorker:
             from backend.app.embeddings.text_embedder import TextEmbeddingService
             from backend.app.embeddings.chemical_embedder import ChemicalEmbeddingService
             from backend.app.models.chunk import Chunk, ChunkEmbedding
+            from sqlalchemy import delete
 
             text_embedder = TextEmbeddingService()
             chemical_embedder = ChemicalEmbeddingService()
@@ -307,6 +316,9 @@ class IngestionPipelineWorker:
                 chunks = []
 
             if chunks:
+                chunk_ids = [c.id for c in chunks]
+                await session.execute(delete(ChunkEmbedding).where(ChunkEmbedding.chunk_id.in_(chunk_ids)))
+                await session.flush()
                 # 1. Text embeddings for retrieval_text
                 text_results = await text_embedder.embed_chunks(chunks)
                 for chunk_id, emb_res in text_results:

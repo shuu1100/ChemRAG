@@ -88,10 +88,10 @@ class ChemicalEmbeddingService:
                 candidates.append(chunk.metadata["smiles"])
 
         elif isinstance(chunk, Chunk):
-            # Check attached chemical entities relationship if present
-            if hasattr(chunk, "chemical_entities") and chunk.chemical_entities:
+            # Check attached chemical entities relationship if loaded without triggering async lazy load
+            if "chemical_entities" in chunk.__dict__ and chunk.chemical_entities:
                 for ce in chunk.chemical_entities:
-                    if hasattr(ce, "entity") and ce.entity and ce.entity.smiles:
+                    if hasattr(ce, "entity") and ce.entity and getattr(ce.entity, "smiles", None):
                         candidates.append(ce.entity.smiles)
 
         return candidates

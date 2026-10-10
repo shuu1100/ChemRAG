@@ -153,7 +153,8 @@ class TextEmbeddingService:
                 texts.append(c.retrieval_text)
                 chunk_ids.append(c.chunk_id)
             elif isinstance(c, Chunk):
-                texts.append(c.retrieval_text or c.raw_text)
+                text_val = getattr(c, "retrieval_text", None) or getattr(c, "raw_text", None) or getattr(c, "content", "")
+                texts.append(text_val)
                 chunk_ids.append(c.id)
             else:
                 texts.append(str(c))

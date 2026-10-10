@@ -415,10 +415,9 @@ async def process_document(
     else:
         job.state = ProcessingState.QUEUED
         job.error_message = None
-        if job.config:
-            job.config["stages_completed"] = [IngestionStage.UPLOAD.value]
-        else:
-            job.config = {"stages_completed": [IngestionStage.UPLOAD.value]}
+        job.config = {"stages_completed": [IngestionStage.UPLOAD.value]}
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(job, "config")
         await session.commit()
         await session.refresh(job)
 

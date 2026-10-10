@@ -168,6 +168,16 @@ class Chunk(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     contains_chemical_entities: Mapped[bool] = mapped_column(Boolean, default=False)
     chunker_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     chunker_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    @property
+    def raw_text(self) -> str:
+        """Alias for content to maintain compatibility with ChunkPayload."""
+        return self.content or ""
+
+    @property
+    def retrieval_text(self) -> str:
+        """Alias for content to maintain compatibility with ChunkPayload."""
+        return self.content or ""
     metadata_: Mapped[dict | None] = mapped_column("metadata", JSONB, nullable=True)
 
     # Relationships

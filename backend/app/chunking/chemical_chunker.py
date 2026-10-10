@@ -147,7 +147,20 @@ class ChemicalAwareChunker:
         """Chunks narrative page blocks respecting atomic spans and procedural order."""
         chunks: List[ChunkPayload] = []
         if not page.blocks:
-            return chunks
+            if page.raw_text and page.raw_text.strip():
+                from backend.app.parsing.models import ParsedBlock
+                page_blocks = [
+                    ParsedBlock(
+                        block_id=0,
+                        block_type="text",
+                        text=page.raw_text.strip(),
+                        bbox=BoundingBox(x0=0.0, y0=0.0, x1=getattr(page, "width", 612.0) or 612.0, y1=getattr(page, "height", 792.0) or 792.0),
+                    )
+                ]
+            else:
+                return chunks
+        else:
+            page_blocks = page.blocks
 
         # Group page blocks into coherent sections or paragraphs
         current_text_parts: List[str] = []
@@ -155,7 +168,7 @@ class ChemicalAwareChunker:
         current_bbox: Optional[BoundingBox] = None
         current_idx = start_index
 
-        for block in page.blocks:
+        for block in page_blocks:
             block_text = block.text.strip()
             if not block_text:
                 continue

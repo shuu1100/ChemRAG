@@ -315,6 +315,128 @@ async def list_documents(
 
 
 @router.get(
+    "/jobs",
+    response_model=list[IngestionJobResponse],
+    summary="List all background ingestion jobs",
+)
+async def list_ingestion_jobs(
+    session: AsyncSession = Depends(get_db_session),
+) -> list[IngestionJobResponse]:
+    """Fetch all ingestion jobs ordered by creation date."""
+    stmt = select(IngestionJob).order_by(IngestionJob.created_at.desc())
+    result = await session.execute(stmt)
+    jobs = result.scalars().all()
+
+    return [
+        IngestionJobResponse(
+            id=job.id,
+            document_id=job.document_id,
+            organization_id=job.organization_id,
+            state=job.state.value,
+            current_phase=job.current_phase,
+            progress_pct=job.progress_pct,
+            started_at=job.started_at,
+            completed_at=job.completed_at,
+            error_message=job.error_message,
+            phase_timings=job.phase_timings,
+            stages_completed=job.config.get("stages_completed", []) if job.config else [],
+        )
+        for job in jobs
+    ]
+
+
+@router.get(
+    "/jobs/{job_id}",
+    response_model=IngestionJobResponse,
+    summary="Get ingestion job status and progress",
+)
+async def get_ingestion_job(
+    job_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> IngestionJobResponse:
+    """Fetch ingestion job progress, active phase, errors, and timing data."""
+    stmt = select(IngestionJob).where(IngestionJob.id == job_id)
+    result = await session.execute(stmt)
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ingestion job with ID {job_id} not found.",
+        )
+
+    completed_stages = job.config.get("stages_completed", []) if job.config else []
+
+    return IngestionJobResponse(
+        id=job.id,
+        document_id=job.document_id,
+        organization_id=job.organization_id,
+        state=job.state.value,
+        current_phase=job.current_phase,
+        progress_pct=job.progress_pct,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        error_message=job.error_message,
+        phase_timings=job.phase_timings,
+        stages_completed=completed_stages,
+    )
+
+
+@router.post(
+    "/jobs/{job_id}/retry",
+    response_model=IngestionJobResponse,
+    summary="Resume or retry a failed ingestion job",
+)
+async def retry_ingestion_job(
+    job_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_db_session),
+) -> IngestionJobResponse:
+    """
+    Resume an ingestion job from its last uncompleted stage.
+    """
+    stmt = select(IngestionJob).where(IngestionJob.id == job_id)
+    result = await session.execute(stmt)
+    job = result.scalar_one_or_none()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ingestion job with ID {job_id} not found.",
+        )
+
+    if job.state == ProcessingState.COMPLETED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job is already completed and cannot be retried.",
+        )
+
+    # Reset state to queued
+    job.state = ProcessingState.QUEUED
+    job.error_message = None
+    job.error_traceback = None
+    await session.commit()
+    await session.refresh(job)
+
+    # Enqueue background execution
+    background_tasks.add_task(run_ingestion_background, job.id)
+
+    completed_stages = job.config.get("stages_completed", []) if job.config else []
+
+    return IngestionJobResponse(
+        id=job.id,
+        document_id=job.document_id,
+        organization_id=job.organization_id,
+        state=job.state.value,
+        current_phase=job.current_phase,
+        progress_pct=job.progress_pct,
+        started_at=job.started_at,
+        completed_at=job.completed_at,
+        error_message=job.error_message,
+        phase_timings=job.phase_timings,
+        stages_completed=completed_stages,
+    )
+
+
+@router.get(
     "/{document_id}",
     response_model=DocumentResponse,
     summary="Get document details by ID",
@@ -475,37 +597,6 @@ async def process_document(
 
 
 @router.get(
-    "/jobs",
-    response_model=list[IngestionJobResponse],
-    summary="List all background ingestion jobs",
-)
-async def list_ingestion_jobs(
-    session: AsyncSession = Depends(get_db_session),
-) -> list[IngestionJobResponse]:
-    """Fetch all ingestion jobs ordered by creation date."""
-    stmt = select(IngestionJob).order_by(IngestionJob.created_at.desc())
-    result = await session.execute(stmt)
-    jobs = result.scalars().all()
-
-    return [
-        IngestionJobResponse(
-            id=job.id,
-            document_id=job.document_id,
-            organization_id=job.organization_id,
-            state=job.state.value,
-            current_phase=job.current_phase,
-            progress_pct=job.progress_pct,
-            started_at=job.started_at,
-            completed_at=job.completed_at,
-            error_message=job.error_message,
-            phase_timings=job.phase_timings,
-            stages_completed=job.config.get("stages_completed", []) if job.config else [],
-        )
-        for job in jobs
-    ]
-
-
-@router.get(
     "/{document_id}/status",
     summary="Get document processing status and progress",
 )
@@ -572,93 +663,3 @@ async def get_document_file(
         headers={"Content-Disposition": f'inline; filename="{doc.filename}"'},
     )
 
-
-@router.get(
-    "/jobs/{job_id}",
-    response_model=IngestionJobResponse,
-    summary="Get ingestion job status and progress",
-)
-async def get_ingestion_job(
-    job_id: uuid.UUID,
-    session: AsyncSession = Depends(get_db_session),
-) -> IngestionJobResponse:
-    """Fetch ingestion job progress, active phase, errors, and timing data."""
-    stmt = select(IngestionJob).where(IngestionJob.id == job_id)
-    result = await session.execute(stmt)
-    job = result.scalar_one_or_none()
-    if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Ingestion job with ID {job_id} not found.",
-        )
-
-    completed_stages = job.config.get("stages_completed", []) if job.config else []
-
-    return IngestionJobResponse(
-        id=job.id,
-        document_id=job.document_id,
-        organization_id=job.organization_id,
-        state=job.state.value,
-        current_phase=job.current_phase,
-        progress_pct=job.progress_pct,
-        started_at=job.started_at,
-        completed_at=job.completed_at,
-        error_message=job.error_message,
-        phase_timings=job.phase_timings,
-        stages_completed=completed_stages,
-    )
-
-
-@router.post(
-    "/jobs/{job_id}/retry",
-    response_model=IngestionJobResponse,
-    summary="Resume or retry a failed ingestion job",
-)
-async def retry_ingestion_job(
-    job_id: uuid.UUID,
-    background_tasks: BackgroundTasks,
-    session: AsyncSession = Depends(get_db_session),
-) -> IngestionJobResponse:
-    """
-    Resume an ingestion job from its last uncompleted stage.
-    """
-    stmt = select(IngestionJob).where(IngestionJob.id == job_id)
-    result = await session.execute(stmt)
-    job = result.scalar_one_or_none()
-    if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Ingestion job with ID {job_id} not found.",
-        )
-
-    if job.state == ProcessingState.COMPLETED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Job is already completed and cannot be retried.",
-        )
-
-    # Reset state to queued
-    job.state = ProcessingState.QUEUED
-    job.error_message = None
-    job.error_traceback = None
-    await session.commit()
-    await session.refresh(job)
-
-    # Enqueue background execution
-    background_tasks.add_task(run_ingestion_background, job.id)
-
-    completed_stages = job.config.get("stages_completed", []) if job.config else []
-
-    return IngestionJobResponse(
-        id=job.id,
-        document_id=job.document_id,
-        organization_id=job.organization_id,
-        state=job.state.value,
-        current_phase=job.current_phase,
-        progress_pct=job.progress_pct,
-        started_at=job.started_at,
-        completed_at=job.completed_at,
-        error_message=job.error_message,
-        phase_timings=job.phase_timings,
-        stages_completed=completed_stages,
-    )

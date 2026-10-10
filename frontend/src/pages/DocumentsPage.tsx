@@ -136,11 +136,11 @@ export const DocumentsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            <DocumentsIcon size={22} className="text-cyan-400" />
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <DocumentsIcon size={22} className="text-cyan-600" />
             <span>Scientific Document Library</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Ingest scholarly PDFs, journals, and chemical patents with GROBID TEI-XML structure parsing.
           </p>
         </div>
@@ -148,7 +148,7 @@ export const DocumentsPage: React.FC = () => {
 
       {/* Drag & Drop Upload Zone */}
       <div
-        className="border-2 border-dashed border-cyan-800/60 hover:border-cyan-500/80 bg-cyan-950/20 hover:bg-cyan-950/40 rounded-xl p-8 text-center transition-all cursor-pointer relative"
+        className="border-2 border-dashed border-cyan-300 hover:border-cyan-500 bg-white/90 hover:bg-cyan-50/50 rounded-xl p-8 text-center transition-all cursor-pointer relative shadow-sm"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -162,50 +162,50 @@ export const DocumentsPage: React.FC = () => {
           onChange={(e) => handleFileUpload(e.target.files)}
         />
         <div className="flex flex-col items-center gap-2">
-          <div className="w-12 h-12 rounded-full bg-cyan-950 text-cyan-400 flex items-center justify-center border border-cyan-700 shadow-md">
+          <div className="w-12 h-12 rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center border border-cyan-200 shadow-2xs">
             <PlusIcon size={24} />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-200">Drag & Drop Scientific PDFs here or click to browse</p>
-            <p className="text-xs text-slate-400 mt-0.5">Supports academic papers, thermodynamic tables, chemical structures, and patents</p>
+            <p className="text-sm font-bold text-slate-800">Drag & Drop Scientific PDFs here or click to browse</p>
+            <p className="text-xs text-slate-500 mt-0.5">Supports academic papers, thermodynamic tables, chemical structures, and patents</p>
           </div>
         </div>
 
         {/* Upload Progress Bar */}
         {isUploading && (
           <div className="mt-4 max-w-md mx-auto space-y-1 font-mono text-xs">
-            <div className="flex justify-between text-cyan-400 font-bold">
+            <div className="flex justify-between text-cyan-700 font-bold">
               <span>Uploading PDF to backend...</span>
               <span>{uploadProgress}%</span>
             </div>
-            <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700">
-              <div className="bg-cyan-400 h-full transition-all duration-150" style={{ width: `${uploadProgress}%` }} />
+            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+              <div className="bg-cyan-600 h-full transition-all duration-150" style={{ width: `${uploadProgress}%` }} />
             </div>
           </div>
         )}
       </div>
 
       {/* Controls & Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
         <div className="relative w-full sm:w-80">
           <input
             type="text"
             placeholder="Search documents by title or DOI..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3.5 py-2 text-xs bg-slate-950 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:border-cyan-500 font-sans"
+            className="w-full pl-9 pr-3.5 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-cyan-500 focus:bg-white font-sans shadow-2xs"
           />
-          <SearchIcon size={16} className="absolute left-3 top-2.5 text-slate-500" />
+          <SearchIcon size={16} className="absolute left-3 top-2.5 text-slate-400" />
         </div>
 
         <div className="flex items-center gap-2 font-mono text-xs">
-          <span className="text-slate-400">Filter Status:</span>
+          <span className="text-slate-500">Filter Status:</span>
           {['all', 'processed', 'processing', 'failed'].map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
               className={`px-2.5 py-1 rounded-md capitalize transition-colors ${
-                statusFilter === st ? 'bg-cyan-950 text-cyan-400 border border-cyan-800 font-bold' : 'text-slate-400 hover:text-slate-200'
+                statusFilter === st ? 'bg-cyan-50 text-cyan-700 border border-cyan-300 font-bold' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               {st}
@@ -215,10 +215,10 @@ export const DocumentsPage: React.FC = () => {
       </div>
 
       {/* Documents Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-950 border-b border-slate-800 text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">
+            <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500">
               <th className="p-4">Document Title</th>
               <th className="p-4">Type</th>
               <th className="p-4">Status</th>
@@ -227,47 +227,47 @@ export const DocumentsPage: React.FC = () => {
               <th className="p-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800 text-xs">
+          <tbody className="divide-y divide-slate-100 text-xs">
             {filteredDocs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-slate-500 font-mono">
+                <td colSpan={6} className="p-8 text-center text-slate-400 font-mono">
                   No matching documents found. Upload a scientific PDF to populate your corpus.
                 </td>
               </tr>
             ) : (
               filteredDocs.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-800/60 transition-colors">
-                  <td className="p-4 font-semibold text-slate-200">
-                    <div className="text-sm text-slate-100">{doc.title}</div>
-                    {doc.doi && <div className="text-[11px] text-cyan-400 font-mono mt-0.5">DOI: {doc.doi}</div>}
+                <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="p-4 font-semibold text-slate-800">
+                    <div className="text-sm text-slate-900">{doc.title}</div>
+                    {doc.doi && <div className="text-[11px] text-cyan-700 font-mono mt-0.5">DOI: {doc.doi}</div>}
                   </td>
-                  <td className="p-4 font-mono text-slate-400 uppercase text-[10px]">
-                    <span className="px-2 py-0.5 rounded bg-slate-950 border border-slate-800">{doc.source_type || 'PDF'}</span>
+                  <td className="p-4 font-mono text-slate-500 uppercase text-[10px]">
+                    <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-bold">{doc.source_type || 'PDF'}</span>
                   </td>
                   <td className="p-4 font-mono">
                     <span
                       className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${
                         doc.status === 'processed'
-                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
                           : doc.status === 'failed'
-                          ? 'bg-rose-950 text-rose-400 border border-rose-800'
-                          : 'bg-amber-950 text-amber-400 border border-amber-800 animate-pulse'
+                          ? 'bg-rose-50 text-rose-700 border border-rose-300'
+                          : 'bg-amber-50 text-amber-700 border border-amber-300 animate-pulse'
                       }`}
                     >
                       {doc.status}
                     </span>
                   </td>
-                  <td className="p-4 font-mono text-slate-300">
+                  <td className="p-4 font-mono text-slate-600">
                     {doc.page_count || 12} pages / {doc.chunk_count || 148} chunks
                   </td>
-                  <td className="p-4 font-mono text-slate-400">{new Date(doc.created_at || Date.now()).toLocaleDateString()}</td>
+                  <td className="p-4 font-mono text-slate-500">{new Date(doc.created_at || Date.now()).toLocaleDateString()}</td>
                   <td className="p-4 text-right space-x-3 font-mono">
                     {doc.status === 'failed' && (
-                      <button onClick={() => handleRetry(doc.id)} className="text-amber-400 hover:underline">
+                      <button onClick={() => handleRetry(doc.id)} className="text-amber-600 hover:underline font-bold">
                         Retry
                       </button>
                     )}
-                    <button onClick={() => handleDelete(doc.id)} className="text-rose-400 hover:underline">
+                    <button onClick={() => handleDelete(doc.id)} className="text-rose-600 hover:underline font-bold">
                       Remove
                     </button>
                   </td>

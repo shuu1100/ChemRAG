@@ -9,27 +9,27 @@ export const DocumentViewerPage: React.FC = () => {
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-black text-white tracking-tight">PDF Evidence & Provenance Viewer</h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">PDF Evidence & Provenance Viewer</h2>
+          <p className="text-xs text-slate-500 mt-1">
             Auditable citation evidence mapping with spatial PDF bounding box overlays and viewport alignment.
           </p>
         </div>
 
         <button
           onClick={() => setShowModal(true)}
-          className="px-4 py-2 text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 rounded-lg shadow-lg shadow-cyan-500/20"
+          className="px-4 py-2 text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 rounded-lg shadow-sm"
         >
           Open Evidence Overlay
         </button>
       </div>
 
       {/* Embedded Evidence Viewer Demo Container */}
-      <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
+      <div className="p-6 bg-white border border-slate-200 rounded-2xl space-y-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <span className="px-2.5 py-1 text-xs font-mono font-bold text-cyan-400 bg-cyan-950 border border-cyan-800 rounded">
+          <span className="px-2.5 py-1 text-xs font-mono font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 rounded">
             Active Citation: {selectedCitation}
           </span>
-          <span className="text-xs text-slate-300">
+          <span className="text-xs text-slate-800">
             Document: <strong>Thermodynamic Properties of Ethanol-Water Mixtures</strong> (Page 3)
           </span>
         </div>

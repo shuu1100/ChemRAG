@@ -33,7 +33,7 @@ export const AppShell: React.FC = () => {
   };
 
   return (
-    <div className="h-screen text-slate-100 flex flex-col font-sans overflow-hidden relative">
+    <div className="h-screen text-slate-800 flex flex-col font-sans overflow-hidden relative">
       {/* Softly Blurred Scientific Molecular Background */}
       <div className="molecule-background" />
       <div className="molecule-overlay" />
@@ -60,18 +60,18 @@ export const AppShell: React.FC = () => {
           <div className="md:hidden fixed inset-0 z-50 flex">
             {/* Backdrop overlay */}
             <div
-              className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
               onClick={() => setIsMobileOpen(false)}
             />
 
             {/* Slide-over Drawer */}
-            <div className="relative flex-1 max-w-xs w-full bg-slate-900/90 backdrop-blur-md h-full shadow-2xl z-10 border-r border-slate-800">
+            <div className="relative flex-1 max-w-xs w-full bg-white/95 backdrop-blur-md h-full shadow-2xl z-10 border-r border-slate-200">
               <div className="absolute top-3 right-3 z-20">
                 <button
                   onClick={() => setIsMobileOpen(false)}
                   type="button"
                   aria-label="Close Navigation Drawer"
-                  className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                  className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                 >
                   <XIcon size={20} />
                 </button>

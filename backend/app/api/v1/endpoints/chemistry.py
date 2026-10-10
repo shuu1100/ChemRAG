@@ -112,14 +112,28 @@ async def resolve_compound(
         svg = validator.generate_structure_svg(smiles) if smiles else None
         struct_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{record.cid}/PNG" if record.cid else None
 
+        # Enrich missing property fields (formula, MW, inchi_key) via RDKit
+        formula = record.molecular_formula
+        mw = record.molecular_weight
+        inchi = record.inchi
+        inchi_key = record.inchi_key
+
+        if smiles and (not formula or not mw or not inchi_key):
+            val = validator.validate_smiles(smiles)
+            if val.is_valid:
+                formula = formula or val.molecular_formula
+                mw = mw or val.molecular_weight
+                inchi = inchi or val.inchi
+                inchi_key = inchi_key or val.inchi_key
+
         return ResolveCompoundResponse(
             found=True,
             cid=record.cid,
             canonical_smiles=record.canonical_smiles,
-            inchi=record.inchi,
-            inchi_key=record.inchi_key,
-            molecular_formula=record.molecular_formula,
-            molecular_weight=record.molecular_weight,
+            inchi=inchi,
+            inchi_key=inchi_key,
+            molecular_formula=formula,
+            molecular_weight=mw,
             iupac_name=record.iupac_name or q,
             structure_svg=svg,
             structure_url=struct_url,
@@ -148,6 +162,21 @@ async def resolve_compound(
         found=False,
         message=f"Compound not found for query '{q}' in PubChem or RDKit.",
     )
+
+
+@router.get(
+    "/resolve",
+    response_model=ResolveCompoundResponse,
+    summary="Resolve compound via PubChem and RDKit (GET)",
+)
+async def resolve_compound_get(
+    query: str,
+    query_type: str = "name",
+) -> ResolveCompoundResponse:
+    """
+    GET query parameter endpoint for compound structure resolution.
+    """
+    return await resolve_compound(ResolveCompoundRequest(query=query, query_type=query_type))
 
 
 @router.post(

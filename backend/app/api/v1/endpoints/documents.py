@@ -415,6 +415,10 @@ async def process_document(
     else:
         job.state = ProcessingState.QUEUED
         job.error_message = None
+        if job.config:
+            job.config["stages_completed"] = [IngestionStage.UPLOAD.value]
+        else:
+            job.config = {"stages_completed": [IngestionStage.UPLOAD.value]}
         await session.commit()
         await session.refresh(job)
 

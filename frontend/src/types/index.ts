@@ -78,6 +78,10 @@ export interface ChemicalEntity {
   formula?: string;
   molecular_weight?: number;
   iupac_name?: string;
+  cid?: number;
+  structure_svg?: string;
+  structure_url?: string;
+  data_source?: string;
 }
 
 export interface ExperimentRecord {

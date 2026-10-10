@@ -81,51 +81,59 @@ class GeminiService:
                 "error_detail": "Gemini API key is missing or not configured in environment.",
             }
 
-        # Build Context Prompt
-        context_lines: list[str] = ["### RETRIEVED SCIENTIFIC EVIDENCE:"]
+        # Build Context Prompt & System Instructions
         if retrieved_passages:
+            context_lines: list[str] = ["### RETRIEVED SCIENTIFIC EVIDENCE:"]
             for p in retrieved_passages:
                 cit_id = p.get("citation_id", "CIT-000")
                 doc_id = str(p.get("document_id", ""))[:8]
                 page = p.get("page_number", "N/A")
                 content = p.get("content", "").strip()
                 context_lines.append(f"- [{cit_id}] (Doc: {doc_id}, Page: {page}): {content}")
+
+            if chemical_metadata:
+                context_lines.append("\n### CHARACTERIZED CHEMICAL ENTITIES:")
+                for chem in chemical_metadata:
+                    context_lines.append(
+                        f"- {chem.get('name')}: SMILES={chem.get('smiles')}, MW={chem.get('molecular_weight')}, Formula={chem.get('molecular_formula')}"
+                    )
+
+            if calculation_results:
+                context_lines.append("\n### CALCULATED STOICHIOMETRIC RESULTS:")
+                for calc in calculation_results:
+                    context_lines.append(
+                        f"- {calc.get('calculation_type')}: {calc.get('result_value')} {calc.get('units')} (Formula: {calc.get('formula_applied')})"
+                    )
+
+            context_str = "\n".join(context_lines)
+
+            system_instruction = (
+                "You are ChemRAG's Senior Chemical AI Research Assistant.\n"
+                "Answer the scientific question using the provided evidence passages and chemical data.\n\n"
+                "CRITICAL GROUNDED RESPONSE RULES:\n"
+                "1. Synthesize a direct, precise scientific answer using the retrieved Context Passages.\n"
+                "2. Cite evidence passages using in-text tags matching the exact citation identifiers, e.g. [CIT-001].\n"
+                "3. Preserve scientific notation, chemical formulas (e.g. H₂SO₄, O₂), units (e.g. °C, K, g/mol), and experimental conditions.\n"
+                "4. Where property extraction is requested, include a Markdown table with columns: Property | Extracted Value | Unit | Conditions | Source.\n"
+            )
+            user_prompt = f"{context_str}\n\n### USER RESEARCH QUESTION:\n{query}"
         else:
-            context_lines.append("No relevant document passages were found in the indexed corpus.")
-
-        if chemical_metadata:
-            context_lines.append("\n### CHARACTERIZED CHEMICAL ENTITIES:")
-            for chem in chemical_metadata:
-                context_lines.append(
-                    f"- {chem.get('name')}: SMILES={chem.get('smiles')}, MW={chem.get('molecular_weight')}, Formula={chem.get('molecular_formula')}"
-                )
-
-        if calculation_results:
-            context_lines.append("\n### CALCULATED STOICHIOMETRIC RESULTS:")
-            for calc in calculation_results:
-                context_lines.append(
-                    f"- {calc.get('calculation_type')}: {calc.get('result_value')} {calc.get('units')} (Formula: {calc.get('formula_applied')})"
-                )
-
-        context_str = "\n".join(context_lines)
-
-        system_instruction = (
-            "You are ChemRAG's Senior Chemical AI Research Assistant.\n"
-            "Answer the scientific question using ONLY the provided evidence passages and chemical data.\n\n"
-            "CRITICAL SCIENTIFIC GROUNDING RULES:\n"
-            "1. Base your response strictly on the provided Context Passages and Chemical Data.\n"
-            "2. If the provided evidence does not contain sufficient information to answer the question, explicitly state: "
-            "\"The indexed scientific sources do not provide sufficient evidence to answer this question.\" "
-            "Do NOT fabricate facts, boiling points, melting points, reaction mechanisms, or unverified claims.\n"
-            "3. Cite evidence passages using in-text tags matching the citation identifiers provided, e.g. [CIT-001].\n"
-            "4. Preserve scientific notation, chemical formulas (e.g. H₂SO₄, C₆H₆), units (e.g. °C, kJ/mol, g/mol), and experimental conditions.\n"
-            "5. If sources contain conflicting values (e.g. diverging yields), highlight the discrepancy explicitly.\n"
-        )
-
-        user_prompt = f"{context_str}\n\n### USER RESEARCH QUESTION:\n{query}"
+            system_instruction = (
+                "You are ChemRAG's Senior Chemical AI Research Assistant.\n"
+                "No matching document evidence was retrieved from the user's indexed corpus for this query.\n"
+                "Answer the user's scientific research question accurately using general scientific knowledge.\n\n"
+                "CRITICAL GENERAL KNOWLEDGE RULES:\n"
+                "1. Begin your response with the exact heading:\n"
+                "   ### General Knowledge — Not verified against your indexed documents\n"
+                "2. Include this exact callout note at the top:\n"
+                "   > 📌 **General Knowledge Answer**: No matching evidence was found in your indexed scientific documents for this query. The answer below is synthesized from general scientific literature.\n"
+                "3. Provide a clear, accurate scientific answer including property values, units (e.g., °C, K, g/mol), standard conditions (e.g., 1 atm / 101.3 kPa), and relevant chemical context.\n"
+                "4. Do NOT include any fake citation tags (such as [CIT-001]).\n"
+            )
+            user_prompt = f"### USER RESEARCH QUESTION:\n{query}"
 
         # Try candidate models if the default model fails with 404 or quota
-        candidate_models = [model_name, "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"]
+        candidate_models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-flash-latest", model_name]
         # Remove duplicates while preserving order
         candidate_models = list(dict.fromkeys([m for m in candidate_models if m]))
 
@@ -145,17 +153,15 @@ class GeminiService:
                         "status": "success",
                         "error_detail": None,
                     }
-            except errors.ClientError as err:
+            except errors.APIError as err:
                 last_error = str(err)
-                if err.code == 429 or "RESOURCE_EXHAUSTED" in last_error or "quota" in last_error.lower():
-                    self.logger.warning("Gemini API quota rate limit encountered", model=current_model)
-                    return {
-                        "answer": None,
-                        "model_used": current_model,
-                        "status": "quota_exceeded",
-                        "error_detail": "Gemini API quota exceeded or rate limit reached.",
-                    }
-                elif err.code == 401 or "UNAUTHENTICATED" in last_error:
+                code = getattr(err, "code", getattr(err, "status_code", 500))
+                self.logger.warning("Gemini API error encountered", model=current_model, code=code, error=last_error[:200])
+
+                if code == 429 or "RESOURCE_EXHAUSTED" in last_error or "quota" in last_error.lower():
+                    self.logger.warning("Gemini API quota rate limit encountered, trying next candidate", model=current_model)
+                    continue
+                elif code == 401 or "UNAUTHENTICATED" in last_error:
                     self.logger.error("Gemini API authentication failed", model=current_model)
                     return {
                         "answer": None,
@@ -163,16 +169,16 @@ class GeminiService:
                         "status": "auth_error",
                         "error_detail": "Gemini API authentication failed. Please check the API key.",
                     }
-                elif err.code == 404 or "NOT_FOUND" in last_error:
-                    self.logger.warning("Gemini model not found, trying next candidate", model=current_model)
+                elif code in (404, 503) or "NOT_FOUND" in last_error or "UNAVAILABLE" in last_error or "capacity" in last_error.lower():
+                    self.logger.warning("Gemini model unavailable or not found, trying next candidate", model=current_model)
                     continue
                 else:
-                    self.logger.error("Gemini API client error", error=last_error, model=current_model)
-                    break
+                    self.logger.error("Gemini API error", error=last_error, model=current_model)
+                    continue
             except Exception as exc:
                 last_error = str(exc)
-                self.logger.error("Unexpected Gemini API error", error=last_error, model=current_model)
-                break
+                self.logger.error("Unexpected Gemini error", error=last_error, model=current_model)
+                continue
 
         return {
             "answer": None,

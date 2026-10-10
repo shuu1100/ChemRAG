@@ -33,15 +33,20 @@ export const AppShell: React.FC = () => {
   };
 
   return (
-    <div className="h-screen bg-slate-950 text-slate-100 flex flex-col font-sans overflow-hidden">
-      {/* Top Header Navbar */}
-      <Navbar
-        onToggleSidebar={handleToggleCollapse}
-        onMobileToggle={handleMobileToggle}
-      />
+    <div className="h-screen text-slate-100 flex flex-col font-sans overflow-hidden relative">
+      {/* Softly Blurred Scientific Molecular Background */}
+      <div className="molecule-background" />
+      <div className="molecule-overlay" />
 
-      {/* Main Container: Sidebar + Scientific Workspace */}
-      <div className="flex-1 flex overflow-hidden relative">
+      {/* Top Header Navbar */}
+      <div className="relative z-10 flex flex-col h-full overflow-hidden">
+        <Navbar
+          onToggleSidebar={handleToggleCollapse}
+          onMobileToggle={handleMobileToggle}
+        />
+
+        {/* Main Container: Sidebar + Scientific Workspace */}
+        <div className="flex-1 flex overflow-hidden relative">
         {/* Desktop Collapsible Sidebar */}
         <div className="hidden md:block h-full">
           <Sidebar
@@ -60,7 +65,7 @@ export const AppShell: React.FC = () => {
             />
 
             {/* Slide-over Drawer */}
-            <div className="relative flex-1 max-w-xs w-full bg-slate-900 h-full shadow-2xl z-10 border-r border-slate-800">
+            <div className="relative flex-1 max-w-xs w-full bg-slate-900/90 backdrop-blur-md h-full shadow-2xl z-10 border-r border-slate-800">
               <div className="absolute top-3 right-3 z-20">
                 <button
                   onClick={() => setIsMobileOpen(false)}
@@ -82,12 +87,13 @@ export const AppShell: React.FC = () => {
         )}
 
         {/* Main Workspace Content Area */}
-        <main className="flex-1 overflow-y-auto bg-slate-950 p-4 md:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto bg-transparent p-4 md:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-6">
             <Outlet />
           </div>
         </main>
       </div>
+    </div>
     </div>
   );
 };

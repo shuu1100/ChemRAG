@@ -29,6 +29,27 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # ── Startup tasks ──────────────────────────────────────────
     try:
+        from backend.app.db.base import Base
+        from backend.app.db.session import get_engine, get_session_factory
+        import backend.app.models  # noqa: F401
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+
+        from sqlalchemy import text
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            await session.execute(text("""
+                INSERT INTO organizations (id, name, slug, is_active, max_documents, max_storage_bytes)
+                VALUES ('00000000-0000-0000-0000-000000000000'::UUID, 'Default Organization', 'default-org', TRUE, 1000, 2147483647)
+                ON CONFLICT (id) DO NOTHING;
+            """))
+            await session.commit()
+        logger.info("Database schema initialized & default organization ready")
+    except Exception as exc:
+        logger.warning("Database schema initialization warning", error=str(exc))
+
+    try:
         from backend.app.db.redis import get_redis_client
         redis_client = get_redis_client()
         await redis_client.ping()

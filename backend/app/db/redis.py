@@ -81,7 +81,7 @@ def get_redis_client() -> Any:
         settings = get_settings()
         rc = settings.redis
         _redis_client = aioredis.Redis(
-            host=rc.host,
+            host=rc.effective_host,
             port=rc.port,
             db=rc.db,
             password=rc.password.get_secret_value() if rc.password else None,

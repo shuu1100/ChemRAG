@@ -112,7 +112,7 @@ class PubChemResolver:
         encoded = urllib.parse.quote(clean)
         url = (
             f"{PUBCHEM_BASE_URL}/compound/name/{encoded}/property/"
-            "CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName,MolecularFormula,MolecularWeight/JSON"
+            "SMILES,CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName,MolecularFormula,MolecularWeight/JSON"
         )
         record = await self._fetch_compound_properties(url)
         self._set_cache(cache_key, record)
@@ -134,7 +134,7 @@ class PubChemResolver:
         encoded = urllib.parse.quote(clean)
         url = (
             f"{PUBCHEM_BASE_URL}/compound/smiles/{encoded}/property/"
-            "CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName,MolecularFormula,MolecularWeight/JSON"
+            "SMILES,CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName,MolecularFormula,MolecularWeight/JSON"
         )
         record = await self._fetch_compound_properties(url)
         self._set_cache(cache_key, record)
@@ -155,7 +155,7 @@ class PubChemResolver:
 
         url = (
             f"{PUBCHEM_BASE_URL}/compound/inchikey/{clean}/property/"
-            "CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName,MolecularFormula,MolecularWeight/JSON"
+            "SMILES,CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName,MolecularFormula,MolecularWeight/JSON"
         )
         record = await self._fetch_compound_properties(url)
         self._set_cache(cache_key, record)
@@ -177,7 +177,7 @@ class PubChemResolver:
         encoded = urllib.parse.quote(clean)
         url = (
             f"{PUBCHEM_BASE_URL}/compound/inchi/property/"
-            "CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName,MolecularFormula,MolecularWeight/JSON"
+            "SMILES,CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName,MolecularFormula,MolecularWeight/JSON"
         )
         record = await self._post_compound_properties(url, {"inchi": clean})
         self._set_cache(cache_key, record)
@@ -199,7 +199,7 @@ class PubChemResolver:
         encoded = urllib.parse.quote(clean)
         url = (
             f"{PUBCHEM_BASE_URL}/compound/fastformula/{encoded}/property/"
-            "CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName,MolecularFormula,MolecularWeight/JSON"
+            "SMILES,CanonicalSMILES,IsomericSMILES,InChI,InChIKey,IUPACName,MolecularFormula,MolecularWeight/JSON"
         )
         record = await self._fetch_compound_properties(url)
         self._set_cache(cache_key, record)
@@ -301,10 +301,12 @@ class PubChemResolver:
         if not props_list:
             return None
         p = props_list[0]
+        logger.info("PubChem raw property item", item=p)
+        smiles = p.get("CanonicalSMILES") or p.get("SMILES") or p.get("IsomericSMILES") or p.get("ConnectivitySMILES") or ""
         return PubChemRecord(
             cid=int(p.get("CID", 0)),
-            canonical_smiles=p.get("CanonicalSMILES", ""),
-            isomeric_smiles=p.get("IsomericSMILES"),
+            canonical_smiles=smiles,
+            isomeric_smiles=p.get("IsomericSMILES") or p.get("SMILES"),
             inchi=p.get("InChI"),
             inchi_key=p.get("InChIKey"),
             iupac_name=p.get("IUPACName"),

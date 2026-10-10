@@ -46,8 +46,14 @@ class SemanticRetriever:
 
     async def get_query_embedding(self, query_text: str) -> list[float]:
         """Generate embedding vector for the query string."""
-        emb_res = await self.provider.embed_single(query_text)
-        return emb_res.vector
+        try:
+            emb_res = await self.provider.embed_single(query_text)
+            return emb_res.vector
+        except Exception as exc:
+            logger.warning("Primary embedding provider failed for query (%s); falling back to DeterministicLocalProvider", exc)
+            fallback_provider = get_text_embedding_provider("local")
+            emb_res = await fallback_provider.embed_single(query_text)
+            return emb_res.vector
 
     async def search(
         self,

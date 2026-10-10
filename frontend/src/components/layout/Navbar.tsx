@@ -67,7 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onMobileToggle }) => {
   const RouteIcon = currentRouteInfo.icon;
 
   return (
-    <header className="h-14 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 md:px-6 flex items-center justify-between sticky top-0 z-30 shrink-0 text-slate-100">
+    <header className="h-14 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-4 md:px-6 flex items-center justify-between sticky top-0 z-30 shrink-0 text-slate-100">
       {/* Left Section: Mobile Menu + Breadcrumb & Title */}
       <div className="flex items-center gap-3">
         <button

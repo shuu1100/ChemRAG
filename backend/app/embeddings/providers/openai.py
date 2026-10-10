@@ -80,11 +80,17 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
                     if resp.status_code == 200:
                         data = resp.json()
                         return data.get("data", [])
+                    elif resp.status_code in (401, 403):
+                        raise EmbeddingProviderUnavailableError(f"OpenAI API key unauthorized (status {resp.status_code}).")
                     elif resp.status_code in (429, 500, 502, 503, 504) and attempt < self.retries:
                         await asyncio.sleep(2 ** attempt * 0.5)
                         continue
                     else:
-                        resp.raise_for_status()
+                        raise EmbeddingProviderUnavailableError(f"OpenAI embedding request failed with HTTP {resp.status_code}.")
+            except EmbeddingProviderUnavailableError:
+                raise
+            except httpx.HTTPStatusError as http_err:
+                raise EmbeddingProviderUnavailableError(f"OpenAI HTTP error: {http_err}") from http_err
             except Exception as exc:
                 last_err = exc
                 if attempt < self.retries:
@@ -117,6 +123,8 @@ class OpenAIEmbeddingProvider(BaseEmbeddingProvider):
                 except Exception as val_exc:
                     failed_indices.append(idx)
                     errors[idx] = str(val_exc)
+        except EmbeddingProviderUnavailableError:
+            raise
         except Exception as exc:
             # Mark all as failed if whole batch call failed
             for idx in range(len(texts)):

@@ -45,7 +45,7 @@ async def validate_chemical_smiles(
     """
     Validates chemical valency, returns canonical SMILES, InChI, InChIKey,
     molecular formula, molecular weight, heavy atom count, bond count,
-    formal charge, and stereochemical centers. Never exposes arbitrary code execution.
+    formal charge, stereochemical centers, and 2D SVG structure depiction.
     """
     raw_smiles = payload.smiles.strip()
     res = validator.validate_smiles(raw_smiles)
@@ -62,6 +62,7 @@ async def validate_chemical_smiles(
     bond_count = mol.GetNumBonds() if mol else 0
     formal_charge = Chem.GetFormalCharge(mol) if mol else 0
     chiral_centers = len(Chem.FindMolChiralCenters(mol, includeUnassigned=True)) if mol else 0
+    svg = validator.generate_structure_svg(res.canonical_smiles or raw_smiles)
 
     return ValidateSmilesResponse(
         valid=True,
@@ -75,6 +76,7 @@ async def validate_chemical_smiles(
         bond_count=bond_count,
         formal_charge=formal_charge,
         num_chiral_centers=chiral_centers,
+        structure_svg=svg,
         validation_error=None,
     )
 
@@ -82,45 +84,69 @@ async def validate_chemical_smiles(
 @router.post(
     "/resolve",
     response_model=ResolveCompoundResponse,
-    summary="Resolve compound via PubChem with caching",
+    summary="Resolve compound via PubChem and RDKit with 2D structure generation",
 )
 async def resolve_compound(
     payload: ResolveCompoundRequest,
 ) -> ResolveCompoundResponse:
     """
-    Resolves a chemical name, SMILES, or InChIKey against PubChem PUG REST.
-    Uses negative caching and rate limiting. Returns null fields gracefully if offline.
+    Resolves a chemical name, SMILES, or InChIKey against PubChem PUG REST or local RDKit.
+    Generates 2D SVG structure depictions and provides structure image URLs.
     """
     q = payload.query.strip()
     q_type = payload.query_type.lower().strip()
 
+    record = None
     if q_type == "name":
         record = await pubchem_resolver.resolve_by_name(q)
     elif q_type == "smiles":
         record = await pubchem_resolver.resolve_by_smiles(q)
     elif q_type == "inchikey":
         record = await pubchem_resolver.resolve_by_inchikey(q)
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid query_type '{q_type}'. Must be 'name', 'smiles', or 'inchikey'.",
+    
+    if not record:
+        record = await pubchem_resolver.resolve(q)
+
+    if record:
+        smiles = record.canonical_smiles or ""
+        svg = validator.generate_structure_svg(smiles) if smiles else None
+        struct_url = f"https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{record.cid}/PNG" if record.cid else None
+
+        return ResolveCompoundResponse(
+            found=True,
+            cid=record.cid,
+            canonical_smiles=record.canonical_smiles,
+            inchi=record.inchi,
+            inchi_key=record.inchi_key,
+            molecular_formula=record.molecular_formula,
+            molecular_weight=record.molecular_weight,
+            iupac_name=record.iupac_name or q,
+            structure_svg=svg,
+            structure_url=struct_url,
+            data_source="PubChem + RDKit",
+            message="Successfully resolved compound from PubChem.",
         )
 
-    if not record:
+    # Local RDKit fallback if PubChem did not return a record
+    res = validator.validate_smiles(q)
+    if res.is_valid and res.canonical_smiles:
+        svg = validator.generate_structure_svg(res.canonical_smiles)
         return ResolveCompoundResponse(
-            found=False,
-            message=f"Compound not found for query '{q}' in PubChem (or service offline).",
+            found=True,
+            canonical_smiles=res.canonical_smiles,
+            inchi=res.inchi,
+            inchi_key=res.inchi_key,
+            molecular_formula=res.molecular_formula,
+            molecular_weight=res.molecular_weight,
+            iupac_name=q,
+            structure_svg=svg,
+            data_source="RDKit Local Validator",
+            message="Resolved structure locally via RDKit.",
         )
 
     return ResolveCompoundResponse(
-        found=True,
-        cid=record.cid,
-        canonical_smiles=record.canonical_smiles,
-        inchi_key=record.inchi_key,
-        molecular_formula=record.molecular_formula,
-        molecular_weight=record.molecular_weight,
-        iupac_name=record.iupac_name,
-        message="Successfully resolved compound from PubChem.",
+        found=False,
+        message=f"Compound not found for query '{q}' in PubChem or RDKit.",
     )
 
 

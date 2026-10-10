@@ -48,8 +48,8 @@ def get_text_embedding_provider(
 
     if chosen_provider == EmbeddingProvider.OPENAI:
         api_key_str = emb_cfg.api_key.get_secret_value() if emb_cfg.api_key else None
-        if not api_key_str:
-            logger.info("OpenAI API key not set; falling back to deterministic local provider.")
+        if not api_key_str or "replace-with" in api_key_str or "placeholder" in api_key_str or not api_key_str.startswith("sk-"):
+            logger.info("OpenAI API key not set or placeholder; using deterministic local embedding provider.")
             return DeterministicLocalProvider(
                 model_name=target_model,
                 dimensions=target_dims,

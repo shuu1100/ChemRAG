@@ -134,9 +134,9 @@ export const ChatPage: React.FC = () => {
   return (
     <div className="flex h-[calc(100vh-6rem)] gap-6 max-w-7xl mx-auto select-none">
       {/* Main Chat Container */}
-      <div className="flex-1 flex flex-col bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
+      <div className="flex-1 flex flex-col bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl">
         {/* Chat Header */}
-        <div className="px-6 py-3.5 bg-slate-950 border-b border-slate-800 flex justify-between items-center">
+        <div className="px-6 py-3.5 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80 flex justify-between items-center">
           <div>
             <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
               💬 ChemRAG Scientific Assistant
@@ -177,7 +177,7 @@ export const ChatPage: React.FC = () => {
                 className={`max-w-3xl p-4 rounded-2xl text-xs leading-relaxed space-y-3 ${
                   msg.sender === 'user'
                     ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-br-none shadow-md font-medium'
-                    : 'bg-slate-950 border border-slate-800 text-slate-200 rounded-bl-none shadow-md'
+                    : 'bg-slate-950/85 backdrop-blur-sm border border-slate-800/80 text-slate-200 rounded-bl-none shadow-md'
                 }`}
               >
                 {/* Message Body */}
@@ -246,7 +246,7 @@ export const ChatPage: React.FC = () => {
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 bg-slate-950 border-t border-slate-800 flex gap-3">
+        <div className="p-4 bg-slate-950/80 backdrop-blur-md border-t border-slate-800/80 flex gap-3">
           <input
             type="text"
             value={inputMessage}
@@ -271,7 +271,7 @@ export const ChatPage: React.FC = () => {
       </div>
 
       {/* Agent Trace Drawer / Panel */}
-      <div className="w-80 bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-xl overflow-y-auto">
+      <div className="w-80 bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 flex flex-col gap-4 shadow-xl overflow-y-auto">
         <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
           <div>
             <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-300 flex items-center gap-2">

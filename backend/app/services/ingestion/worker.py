@@ -240,12 +240,48 @@ class IngestionPipelineWorker:
         elif stage == IngestionStage.CHUNK:
             # Chemical-aware semantic chunking stage
             from backend.app.chunking.chemical_chunker import ChemicalAwareChunker
+            from backend.app.parsing.service import ScientificPDFParser
+            from backend.app.models.chunk import Chunk
+            import hashlib
+
+            file_bytes = await self.storage.get(document.storage_key)
+            parser = ScientificPDFParser()
+            try:
+                parsed_doc = await parser.parse(file_bytes, filename=document.filename, enable_grobid=False)
+            except Exception as parse_exc:
+                logger.warning("PDF parser failed during chunking stage: %s", parse_exc)
+                parsed_doc = None
+
             chunker = ChemicalAwareChunker()
+            created_chunks = []
+            if parsed_doc:
+                payloads = chunker.chunk_document(parsed_doc, document_id=document.id)
+                for idx, payload in enumerate(payloads, start=1):
+                    content_str = payload.retrieval_text or payload.raw_text
+                    if not content_str or not content_str.strip():
+                        continue
+                    ch_hash = hashlib.sha256(content_str.encode("utf-8")).hexdigest()[:32]
+                    c_model = Chunk(
+                        id=uuid.uuid4(),
+                        document_id=document.id,
+                        chunk_index=idx,
+                        chunk_type=payload.chunk_type,
+                        content=content_str,
+                        content_hash=ch_hash,
+                        page_number=payload.page_number or 1,
+                        contains_chemical_entities=payload.contains_chemical_entities,
+                        is_current=True,
+                    )
+                    session.add(c_model)
+                    created_chunks.append(c_model)
+                await session.flush()
+
             if job.config:
                 job.config["chunking"] = {
                     "chunker": "ChemicalAwareChunker",
                     "target_tokens": chunker.target_tokens,
                     "max_tokens": chunker.max_tokens,
+                    "chunks_created": len(created_chunks),
                 }
             await session.commit()
 

@@ -28,6 +28,7 @@ class ValidateSmilesResponse(BaseModel):
     bond_count: int = 0
     formal_charge: int = 0
     num_chiral_centers: int = 0
+    structure_svg: Optional[str] = None
     validation_error: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -44,10 +45,14 @@ class ResolveCompoundResponse(BaseModel):
     found: bool
     cid: Optional[int] = None
     canonical_smiles: Optional[str] = None
+    inchi: Optional[str] = None
     inchi_key: Optional[str] = None
     molecular_formula: Optional[str] = None
     molecular_weight: Optional[float] = None
     iupac_name: Optional[str] = None
+    structure_svg: Optional[str] = None
+    structure_url: Optional[str] = None
+    data_source: Optional[str] = None
     message: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -20,8 +20,12 @@ from enum import Enum
 from functools import lru_cache
 from typing import Any
 
-from pydantic import AnyHttpUrl, Field, SecretStr, field_validator, model_validator
+from dotenv import load_dotenv
+from pydantic import AliasChoices, AnyHttpUrl, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Load root .env file into os.environ
+load_dotenv()
 
 
 # ─────────────────────────────────────────────────────────
@@ -106,10 +110,18 @@ class DatabaseConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="POSTGRES_", extra="ignore")
 
     @property
+    def effective_host(self) -> str:
+        """Resolve effective host: use container hostname inside Docker, fallback to 127.0.0.1 on host OS."""
+        import os
+        if self.host == "postgres" and not os.path.exists("/.dockerenv"):
+            return "127.0.0.1"
+        return self.host
+
+    @property
     def async_url(self) -> str:
         return (
             f"postgresql+asyncpg://{self.user}:{self.password.get_secret_value()}"
-            f"@{self.host}:{self.port}/{self.db}"
+            f"@{self.effective_host}:{self.port}/{self.db}"
         )
 
     @property
@@ -117,7 +129,7 @@ class DatabaseConfig(BaseSettings):
         """Synchronous URL using psycopg v3 (for Alembic and sync operations)."""
         return (
             f"postgresql+psycopg://{self.user}:{self.password.get_secret_value()}"
-            f"@{self.host}:{self.port}/{self.db}"
+            f"@{self.effective_host}:{self.port}/{self.db}"
         )
 
 
@@ -136,11 +148,19 @@ class RedisConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="REDIS_", extra="ignore")
 
     @property
+    def effective_host(self) -> str:
+        """Resolve effective host: use container hostname inside Docker, fallback to 127.0.0.1 on host OS."""
+        import os
+        if self.host == "redis" and not os.path.exists("/.dockerenv"):
+            return "127.0.0.1"
+        return self.host
+
+    @property
     def url(self) -> str:
         password_part = (
             f":{self.password.get_secret_value()}@" if self.password else "@"
         )
-        return f"redis://{password_part}{self.host}:{self.port}/{self.db}"
+        return f"redis://{password_part}{self.effective_host}:{self.port}/{self.db}"
 
 
 class StorageConfig(BaseSettings):
@@ -292,7 +312,10 @@ class SecurityConfig(BaseSettings):
     access_token_expire_minutes: int = Field(default=60, ge=5)
     refresh_token_expire_days: int = Field(default=30, ge=1)
     allowed_hosts: list[str] = ["localhost", "127.0.0.1"]
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    cors_origins: list[str] = Field(
+        default=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://127.0.0.1:3000"],
+        validation_alias=AliasChoices("JWT_CORS_ORIGINS", "BACKEND_CORS_ORIGINS", "CORS_ORIGINS"),
+    )
     bcrypt_rounds: int = Field(default=12, ge=10, le=14)
 
     model_config = SettingsConfigDict(env_prefix="JWT_", extra="ignore")

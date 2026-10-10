@@ -7,7 +7,7 @@ import {
   IngestionJob,
 } from '../types';
 
-const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || '/api/v1';
 
 export const apiClient = axios.create({
   baseURL: API_BASE,
@@ -85,43 +85,51 @@ export const searchApi = {
 
 export const chemistryApi = {
   canonicalize: async (identifier: string): Promise<ChemicalEntity> => {
-    const isSmiles = identifier.includes('=') || identifier.includes('(') || identifier.length < 10;
-    if (isSmiles) {
-      try {
-        const valRes = await apiClient.post('/chemistry/validate', { smiles: identifier });
-        if (valRes.data.valid) {
-          return {
-            id: `chem-${Date.now()}`,
-            canonical_name: identifier,
-            smiles: valRes.data.canonical_smiles || identifier,
-            inchikey: valRes.data.inchi_key || '',
-            inchi: valRes.data.inchi || '',
-            formula: valRes.data.molecular_formula || '',
-            molecular_weight: valRes.data.molecular_weight || 0,
-            iupac_name: identifier,
-          };
-        }
-      } catch {
-        // Fall through to resolve
-      }
-    }
-
     const res = await apiClient.post('/chemistry/resolve', {
       query: identifier,
       query_type: 'name',
     });
 
     const data = res.data;
-    return {
-      id: `chem-${data.cid || Date.now()}`,
-      canonical_name: data.iupac_name || identifier,
-      smiles: data.canonical_smiles || '',
-      inchikey: data.inchi_key || '',
-      inchi: data.inchi || '',
-      formula: data.molecular_formula || '',
-      molecular_weight: data.molecular_weight || 0,
-      iupac_name: data.iupac_name || identifier,
-    };
+    if (data.found) {
+      return {
+        id: `chem-${data.cid || Date.now()}`,
+        canonical_name: data.iupac_name || identifier,
+        smiles: data.canonical_smiles || '',
+        inchikey: data.inchi_key || '',
+        inchi: data.inchi || '',
+        formula: data.molecular_formula || '',
+        molecular_weight: data.molecular_weight || 0,
+        iupac_name: data.iupac_name || identifier,
+        cid: data.cid,
+        structure_svg: data.structure_svg,
+        structure_url: data.structure_url,
+        data_source: data.data_source || 'PubChem / RDKit',
+      };
+    }
+
+    // Fallback if not found: attempt validation endpoint directly
+    try {
+      const valRes = await apiClient.post('/chemistry/validate', { smiles: identifier });
+      if (valRes.data.valid) {
+        return {
+          id: `chem-${Date.now()}`,
+          canonical_name: identifier,
+          smiles: valRes.data.canonical_smiles || identifier,
+          inchikey: valRes.data.inchi_key || '',
+          inchi: valRes.data.inchi || '',
+          formula: valRes.data.molecular_formula || '',
+          molecular_weight: valRes.data.molecular_weight || 0,
+          iupac_name: identifier,
+          structure_svg: valRes.data.structure_svg,
+          data_source: 'RDKit Validator',
+        };
+      }
+    } catch {
+      // Fallback
+    }
+
+    throw new Error(data.message || `Chemical structure unavailable for '${identifier}'`);
   },
 };
 

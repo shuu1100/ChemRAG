@@ -22,6 +22,7 @@ from backend.app.models.document import (  # noqa: F401
 from backend.app.models.chunk import (  # noqa: F401
     Chunk,
     ChunkEmbedding,
+    EmbeddingModelType,
     Provenance,
 )
 

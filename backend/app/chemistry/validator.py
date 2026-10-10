@@ -118,6 +118,32 @@ class RDKitStructureValidator:
     Validates and standardizes chemical structures with RDKit and pure-Python fallback.
     """
 
+    def generate_structure_svg(self, smiles: str, width: int = 300, height: int = 300) -> Optional[str]:
+        """
+        Generates a 2D SVG molecular depiction for valid SMILES using RDKit.
+        Returns None if parsing or drawing fails.
+        """
+        if not smiles or not smiles.strip():
+            return None
+        clean_smiles = smiles.strip()
+        if RDKIT_AVAILABLE and Chem is not None:
+            try:
+                from rdkit.Chem.Draw import rdMolDraw2D
+                mol = Chem.MolFromSmiles(clean_smiles)
+                if mol is None:
+                    return None
+                rdMolDraw2D.PrepareMolForDrawing(mol)
+                drawer = rdMolDraw2D.MolDraw2DSVG(width, height)
+                opts = drawer.drawOptions()
+                opts.clearBackground = False
+                drawer.DrawMolecule(mol)
+                drawer.FinishDrawing()
+                return drawer.GetDrawingText()
+            except Exception as exc:
+                logger.debug("RDKit SVG rendering failed", smiles=clean_smiles, error=str(exc))
+                return None
+        return None
+
     def validate_smiles(self, raw_smiles: str) -> StructureValidationResult:
         """
         Validates raw SMILES string and normalizes to canonical representation.

@@ -65,7 +65,7 @@ const navSections: NavSection[] = [
 export const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, onToggleCollapse, onMobileClose }) => {
   return (
     <aside
-      className={`sidebar-transition h-full bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 select-none text-slate-100 ${
+      className={`sidebar-transition h-full bg-slate-900/85 backdrop-blur-md border-r border-slate-800/80 flex flex-col justify-between shrink-0 select-none text-slate-100 ${
         isCollapsed ? 'w-20' : 'w-64'
       }`}
       aria-label="Sidebar Navigation"

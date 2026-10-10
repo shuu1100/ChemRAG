@@ -260,6 +260,10 @@ async def list_documents(
     session: AsyncSession = Depends(get_db_session),
 ) -> list[DocumentResponse]:
     """Fetch all active non-deleted documents in the workspace."""
+    from backend.app.models.chunk import Chunk
+    from backend.app.models.document import DocumentPage
+    from sqlalchemy import func
+
     stmt = (
         select(Document)
         .where(Document.deleted_at.is_(None))
@@ -268,31 +272,46 @@ async def list_documents(
     result = await session.execute(stmt)
     docs = result.scalars().all()
 
-    return [
-        DocumentResponse(
-            id=doc.id,
-            organization_id=doc.organization_id,
-            uploaded_by_id=doc.uploaded_by_id,
-            filename=doc.filename,
-            file_size_bytes=doc.file_size_bytes,
-            content_type=doc.content_type,
-            doc_type=doc.doc_type.value,
-            genre=doc.genre.value,
-            genre_confidence=doc.genre_confidence,
-            sha256_hash=doc.sha256_hash,
-            title=doc.title,
-            doi=doc.doi,
-            journal=doc.journal,
-            publication_year=doc.publication_year,
-            abstract=doc.abstract,
-            processing_state=doc.processing_state.value,
-            processing_error=doc.processing_error,
-            is_public=bool(doc.is_public),
-            created_at=doc.created_at,
-            updated_at=doc.updated_at,
+    response_list = []
+    for doc in docs:
+        pg_count_res = await session.execute(
+            select(func.count(DocumentPage.id)).where(DocumentPage.document_id == doc.id)
         )
-        for doc in docs
-    ]
+        pg_cnt = pg_count_res.scalar_one_or_none() or 0
+
+        chk_count_res = await session.execute(
+            select(func.count(Chunk.id)).where(Chunk.document_id == doc.id)
+        )
+        chk_cnt = chk_count_res.scalar_one_or_none() or 0
+
+        response_list.append(
+            DocumentResponse(
+                id=doc.id,
+                organization_id=doc.organization_id,
+                uploaded_by_id=doc.uploaded_by_id,
+                filename=doc.filename,
+                file_size_bytes=doc.file_size_bytes,
+                content_type=doc.content_type,
+                doc_type=doc.doc_type.value,
+                genre=doc.genre.value,
+                genre_confidence=doc.genre_confidence,
+                sha256_hash=doc.sha256_hash,
+                title=doc.title,
+                doi=doc.doi,
+                journal=doc.journal,
+                publication_year=doc.publication_year,
+                abstract=doc.abstract,
+                processing_state=doc.processing_state.value,
+                processing_error=doc.processing_error,
+                is_public=bool(doc.is_public),
+                page_count=pg_cnt,
+                chunk_count=chk_cnt,
+                created_at=doc.created_at,
+                updated_at=doc.updated_at,
+            )
+        )
+
+    return response_list
 
 
 @router.get(
@@ -305,6 +324,10 @@ async def get_document(
     session: AsyncSession = Depends(get_db_session),
 ) -> DocumentResponse:
     """Fetch document metadata, genre classification, and processing status."""
+    from backend.app.models.chunk import Chunk
+    from backend.app.models.document import DocumentPage
+    from sqlalchemy import func
+
     stmt = (
         select(Document)
         .where(Document.id == document_id, Document.deleted_at.is_(None))
@@ -316,6 +339,16 @@ async def get_document(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Document with ID {document_id} not found.",
         )
+
+    pg_count_res = await session.execute(
+        select(func.count(DocumentPage.id)).where(DocumentPage.document_id == doc.id)
+    )
+    pg_cnt = pg_count_res.scalar_one_or_none() or 0
+
+    chk_count_res = await session.execute(
+        select(func.count(Chunk.id)).where(Chunk.document_id == doc.id)
+    )
+    chk_cnt = chk_count_res.scalar_one_or_none() or 0
 
     return DocumentResponse(
         id=doc.id,
@@ -336,6 +369,8 @@ async def get_document(
         processing_state=doc.processing_state.value,
         processing_error=doc.processing_error,
         is_public=bool(doc.is_public),
+        page_count=pg_cnt,
+        chunk_count=chk_cnt,
         created_at=doc.created_at,
         updated_at=doc.updated_at,
     )
@@ -436,6 +471,105 @@ async def process_document(
         error_message=job.error_message,
         phase_timings=job.phase_timings,
         stages_completed=completed_stages,
+    )
+
+
+@router.get(
+    "/jobs",
+    response_model=list[IngestionJobResponse],
+    summary="List all background ingestion jobs",
+)
+async def list_ingestion_jobs(
+    session: AsyncSession = Depends(get_db_session),
+) -> list[IngestionJobResponse]:
+    """Fetch all ingestion jobs ordered by creation date."""
+    stmt = select(IngestionJob).order_by(IngestionJob.created_at.desc())
+    result = await session.execute(stmt)
+    jobs = result.scalars().all()
+
+    return [
+        IngestionJobResponse(
+            id=job.id,
+            document_id=job.document_id,
+            organization_id=job.organization_id,
+            state=job.state.value,
+            current_phase=job.current_phase,
+            progress_pct=job.progress_pct,
+            started_at=job.started_at,
+            completed_at=job.completed_at,
+            error_message=job.error_message,
+            phase_timings=job.phase_timings,
+            stages_completed=job.config.get("stages_completed", []) if job.config else [],
+        )
+        for job in jobs
+    ]
+
+
+@router.get(
+    "/{document_id}/status",
+    summary="Get document processing status and progress",
+)
+async def get_document_status(
+    document_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
+    """Fetch real-time document processing status and active job progress."""
+    stmt = select(Document).where(Document.id == document_id, Document.deleted_at.is_(None))
+    result = await session.execute(stmt)
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found.",
+        )
+
+    job_stmt = select(IngestionJob).where(IngestionJob.document_id == document_id).order_by(IngestionJob.created_at.desc())
+    job_res = await session.execute(job_stmt)
+    job = job_res.scalar_one_or_none()
+
+    return {
+        "document_id": str(doc.id),
+        "status": doc.processing_state.value,
+        "processing_stage": job.current_phase if job else doc.processing_state.value,
+        "progress": job.progress_pct if job else (100.0 if doc.processing_state == ProcessingState.COMPLETED else 0.0),
+        "error_message": doc.processing_error or (job.error_message if job else None),
+        "created_at": doc.created_at.isoformat() if doc.created_at else None,
+        "completed_at": job.completed_at.isoformat() if job and job.completed_at else None,
+    }
+
+
+@router.get(
+    "/{document_id}/file",
+    summary="Stream original stored PDF file",
+)
+async def get_document_file(
+    document_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db_session),
+):
+    """Stream original PDF content directly from persistent storage."""
+    stmt = select(Document).where(Document.id == document_id, Document.deleted_at.is_(None))
+    result = await session.execute(stmt)
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Document with ID {document_id} not found.",
+        )
+
+    storage = get_storage_service()
+    try:
+        content = await storage.get(doc.storage_key)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Stored file for document could not be loaded: {str(exc)}",
+        )
+
+    from io import BytesIO
+    return StreamingResponse(
+        BytesIO(content),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{doc.filename}"'},
     )
 
 

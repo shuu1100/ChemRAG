@@ -3,51 +3,6 @@ import { DocumentsIcon, PlusIcon, SearchIcon } from '../components/common/Icons'
 import { documentsApi } from '../services/api';
 import { DocumentItem } from '../types';
 
-const sampleLiterature: DocumentItem[] = [
-  {
-    id: 'doc-101',
-    title: 'Thermodynamics of Ethanol-Water Binary Mixtures and Vapor-Liquid Equilibrium',
-    source_type: 'PDF',
-    file_hash_sha256: 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0',
-    file_size_bytes: 2458000,
-    status: 'processed',
-    created_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 2).toISOString(),
-    page_count: 14,
-    chunk_count: 128,
-    doi: '10.1021/acs.jced.2c00124',
-    authors: ['J. M. Smith', 'H. C. Van Ness', 'M. M. Abbott'],
-  },
-  {
-    id: 'doc-102',
-    title: 'Catalytic Hydrogenation Mechanisms of Bio-Ethanol over Pt/Al2O3 Catalysts',
-    source_type: 'PDF',
-    file_hash_sha256: 'b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef01',
-    file_size_bytes: 4120000,
-    status: 'processed',
-    created_at: new Date(Date.now() - 86400000 * 5).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 5).toISOString(),
-    page_count: 22,
-    chunk_count: 210,
-    doi: '10.1016/j.jcat.2023.04.012',
-    authors: ['A. R. Davis', 'E. K. Miller'],
-  },
-  {
-    id: 'doc-103',
-    title: 'Binary Phase Equilibria, Critical Constants, and Supercritical Extraction',
-    source_type: 'PDF',
-    file_hash_sha256: 'c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef012',
-    file_size_bytes: 1890000,
-    status: 'processing',
-    created_at: new Date(Date.now() - 3600000 * 3).toISOString(),
-    updated_at: new Date(Date.now() - 3600000 * 3).toISOString(),
-    page_count: 8,
-    chunk_count: 64,
-    doi: '10.1002/aic.17890',
-    authors: ['L. T. Biegler'],
-  },
-];
-
 export const DocumentsPage: React.FC = () => {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -55,15 +10,18 @@ export const DocumentsPage: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const loadDocuments = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const docs = await documentsApi.listDocuments();
-      setDocuments(docs || []);
-    } catch (err) {
-      console.warn('Backend documents API unavailable:', err);
+      setDocuments(Array.isArray(docs) ? docs : []);
+    } catch (err: any) {
+      console.warn('Backend documents API error:', err);
+      setLoadError(err?.message || 'Failed to fetch document corpus from backend');
       setDocuments([]);
     } finally {
       setIsLoading(false);
@@ -77,27 +35,19 @@ export const DocumentsPage: React.FC = () => {
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const file = files[0];
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      setUploadError('Only .pdf scientific papers are accepted.');
+      return;
+    }
+    setUploadError(null);
     setIsUploading(true);
     setUploadProgress(10);
 
     try {
-      const uploadedDoc = await documentsApi.uploadDocument(file, (pct) => setUploadProgress(pct));
-      setDocuments((prev) => [uploadedDoc, ...prev]);
-    } catch (err) {
-      // Fallback local document entry if server endpoint is offline
-      const newDoc: DocumentItem = {
-        id: `doc-${Date.now()}`,
-        title: file.name,
-        source_type: 'PDF',
-        file_hash_sha256: 'uploaded_file_sha256_hash',
-        file_size_bytes: file.size,
-        status: 'processed',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        page_count: 10,
-        chunk_count: 85,
-      };
-      setDocuments((prev) => [newDoc, ...prev]);
+      await documentsApi.uploadDocument(file, (pct) => setUploadProgress(pct));
+      await loadDocuments();
+    } catch (err: any) {
+      setUploadError(err?.response?.data?.detail || err?.message || 'Upload failed');
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -108,26 +58,30 @@ export const DocumentsPage: React.FC = () => {
     if (!confirm('Are you sure you want to remove this document from the workspace?')) return;
     try {
       await documentsApi.deleteDocument(id);
-    } catch {
-      // Local filter fallback
+      setDocuments((prev) => prev.filter((d) => d.id !== id));
+    } catch (err: any) {
+      alert(`Delete failed: ${err?.message || 'Unknown error'}`);
     }
-    setDocuments((prev) => prev.filter((d) => d.id !== id));
   };
 
   const handleRetry = async (id: string) => {
     try {
       await documentsApi.retryProcessing(id);
-    } catch {
-      // Fallback update
+      setDocuments((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, status: 'processing' } : d))
+      );
+      setTimeout(loadDocuments, 2000);
+    } catch (err: any) {
+      alert(`Retry failed: ${err?.message || 'Unknown error'}`);
     }
-    setDocuments((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, status: 'processing' } : d))
-    );
   };
 
   const filteredDocs = documents.filter((doc) => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || doc.status === statusFilter;
+    const title = doc.title || (doc as any).filename || '';
+    const doi = doc.doi || '';
+    const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase()) || doi.toLowerCase().includes(searchQuery.toLowerCase());
+    const docStatus = doc.status || (doc as any).processing_state || 'completed';
+    const matchesStatus = statusFilter === 'all' || docStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -141,9 +95,16 @@ export const DocumentsPage: React.FC = () => {
             <span>Scientific Document Library</span>
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Ingest scholarly PDFs, journals, and chemical patents with GROBID TEI-XML structure parsing.
+            Ingest scholarly PDFs, journals, and chemical patents with GROBID TEI-XML structure parsing and RDKit chemistry indexing.
           </p>
         </div>
+        <button
+          onClick={loadDocuments}
+          disabled={isLoading}
+          className="px-3.5 py-1.5 text-xs font-mono font-bold text-cyan-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg shadow-2xs flex items-center gap-1.5 self-start sm:self-auto"
+        >
+          🔄 Refresh Corpus
+        </button>
       </div>
 
       {/* Drag & Drop Upload Zone */}
@@ -183,7 +144,22 @@ export const DocumentsPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {uploadError && (
+          <p className="mt-3 text-xs font-mono font-bold text-rose-600 bg-rose-50 border border-rose-200 py-1.5 px-3 rounded-lg max-w-md mx-auto">
+            ⚠️ {uploadError}
+          </p>
+        )}
       </div>
+
+      {loadError && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-mono flex items-center justify-between shadow-sm">
+          <span>⚠️ {loadError}</span>
+          <button onClick={loadDocuments} className="px-3 py-1 bg-rose-600 text-white font-bold rounded-md hover:bg-rose-700">
+            Retry Connection
+          </button>
+        </div>
+      )}
 
       {/* Controls & Filter Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -200,7 +176,7 @@ export const DocumentsPage: React.FC = () => {
 
         <div className="flex items-center gap-2 font-mono text-xs">
           <span className="text-slate-500">Filter Status:</span>
-          {['all', 'processed', 'processing', 'failed'].map((st) => (
+          {['all', 'completed', 'processing', 'failed'].map((st) => (
             <button
               key={st}
               onClick={() => setStatusFilter(st)}
@@ -228,51 +204,76 @@ export const DocumentsPage: React.FC = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-xs">
-            {filteredDocs.length === 0 ? (
+            {isLoading ? (
+              <tr>
+                <td colSpan={6} className="p-12 text-center text-slate-400 font-mono">
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-cyan-600 border-t-transparent mb-2" />
+                  <p>Loading document corpus from backend...</p>
+                </td>
+              </tr>
+            ) : filteredDocs.length === 0 ? (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-slate-400 font-mono">
                   No matching documents found. Upload a scientific PDF to populate your corpus.
                 </td>
               </tr>
             ) : (
-              filteredDocs.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="p-4 font-semibold text-slate-800">
-                    <div className="text-sm text-slate-900">{doc.title}</div>
-                    {doc.doi && <div className="text-[11px] text-cyan-700 font-mono mt-0.5">DOI: {doc.doi}</div>}
-                  </td>
-                  <td className="p-4 font-mono text-slate-500 uppercase text-[10px]">
-                    <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-bold">{doc.source_type || 'PDF'}</span>
-                  </td>
-                  <td className="p-4 font-mono">
-                    <span
-                      className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        doc.status === 'processed'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-                          : doc.status === 'failed'
-                          ? 'bg-rose-50 text-rose-700 border border-rose-300'
-                          : 'bg-amber-50 text-amber-700 border border-amber-300 animate-pulse'
-                      }`}
-                    >
-                      {doc.status}
-                    </span>
-                  </td>
-                  <td className="p-4 font-mono text-slate-600">
-                    {doc.page_count || 12} pages / {doc.chunk_count || 148} chunks
-                  </td>
-                  <td className="p-4 font-mono text-slate-500">{new Date(doc.created_at || Date.now()).toLocaleDateString()}</td>
-                  <td className="p-4 text-right space-x-3 font-mono">
-                    {doc.status === 'failed' && (
-                      <button onClick={() => handleRetry(doc.id)} className="text-amber-600 hover:underline font-bold">
-                        Retry
+              filteredDocs.map((doc) => {
+                const docTitle = doc.title || (doc as any).filename || 'Untitled Document';
+                const docStatus = doc.status || (doc as any).processing_state || 'completed';
+                const pageCount = (doc as any).page_count || 1;
+                const chunkCount = (doc as any).chunk_count || 0;
+                const createdAt = doc.created_at ? new Date(doc.created_at).toLocaleDateString() : 'Recent';
+
+                return (
+                  <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="p-4 font-semibold text-slate-800">
+                      <div className="text-sm text-slate-900">{docTitle}</div>
+                      {doc.doi && <div className="text-[11px] text-cyan-700 font-mono mt-0.5">DOI: {doc.doi}</div>}
+                    </td>
+                    <td className="p-4 font-mono text-slate-500 uppercase text-[10px]">
+                      <span className="px-2 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-bold">
+                        {doc.source_type || 'PDF'}
+                      </span>
+                    </td>
+                    <td className="p-4 font-mono">
+                      <span
+                        className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          (docStatus as string) === 'completed' || (docStatus as string) === 'processed'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+                            : (docStatus as string) === 'failed'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-300'
+                            : 'bg-amber-50 text-amber-700 border border-amber-300 animate-pulse'
+                        }`}
+                      >
+                        {docStatus}
+                      </span>
+                    </td>
+                    <td className="p-4 font-mono text-slate-600">
+                      {pageCount} {pageCount === 1 ? 'page' : 'pages'} / {chunkCount} {chunkCount === 1 ? 'chunk' : 'chunks'}
+                    </td>
+                    <td className="p-4 font-mono text-slate-500">{createdAt}</td>
+                    <td className="p-4 text-right space-x-3 font-mono">
+                      <a
+                        href={`/api/v1/documents/${doc.id}/file`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-cyan-600 hover:underline font-bold"
+                      >
+                        PDF
+                      </a>
+                      {docStatus === 'failed' && (
+                        <button onClick={() => handleRetry(doc.id)} className="text-amber-600 hover:underline font-bold">
+                          Retry
+                        </button>
+                      )}
+                      <button onClick={() => handleDelete(doc.id)} className="text-rose-600 hover:underline font-bold">
+                        Remove
                       </button>
-                    )}
-                    <button onClick={() => handleDelete(doc.id)} className="text-rose-600 hover:underline font-bold">
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -280,3 +281,5 @@ export const DocumentsPage: React.FC = () => {
     </div>
   );
 };
+
+export default DocumentsPage;

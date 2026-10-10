@@ -16,13 +16,18 @@ from backend.app.retrieval.models import RetrievalFilter, ScoredChunk
 
 class SearchRequest(BaseModel):
     """Hybrid retrieval and search request."""
-    query_text: str = Field(..., min_length=1, description="Natural language search query")
+    query_text: str | None = Field(None, description="Natural language search query")
+    query: str | None = Field(None, description="Alias for query_text")
     query_smiles: str | None = Field(None, description="Optional chemical structure SMILES")
     top_k: int = Field(default=10, ge=1, le=100, description="Number of results to return")
     filters: RetrievalFilter | None = Field(None, description="Metadata and tenant filters")
     rerank: bool = Field(default=True, description="Whether to apply cross-encoder reranking")
     rerank_pool_size: int = Field(default=50, ge=10, le=100, description="Candidate pool size for reranking")
     build_context: bool = Field(default=False, description="Whether to assemble token-budgeted prompt context")
+
+    def get_query_str(self) -> str:
+        q = (self.query_text or self.query or "").strip()
+        return q
 
 
 class SearchResponse(BaseModel):

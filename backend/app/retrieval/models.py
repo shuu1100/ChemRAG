@@ -42,6 +42,7 @@ class ScoredChunk(BaseModel):
     """
     chunk_id: uuid.UUID
     document_id: uuid.UUID
+    document_title: str | None = None
     content: str
     raw_text: str = ""
     retrieval_text: str = ""

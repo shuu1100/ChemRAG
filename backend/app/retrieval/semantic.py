@@ -97,6 +97,8 @@ class SemanticRetriever:
                 ChunkEmbedding,
                 dist_expr,
                 sim_expr,
+                Document.title,
+                Document.filename,
             )
             .join(Chunk, ChunkEmbedding.chunk_id == Chunk.id)
             .join(Document, Chunk.document_id == Document.id)
@@ -132,7 +134,7 @@ class SemanticRetriever:
             rows = result.all()
             scored_chunks: list[ScoredChunk] = []
 
-            for rank, (chunk, chunk_emb, distance, similarity) in enumerate(rows, start=1):
+            for rank, (chunk, chunk_emb, distance, similarity, doc_title, doc_filename) in enumerate(rows, start=1):
                 bbox_dict = None
                 if chunk.bbox_x0 is not None:
                     bbox_dict = {
@@ -147,6 +149,7 @@ class SemanticRetriever:
                     ScoredChunk(
                         chunk_id=chunk.id,
                         document_id=chunk.document_id,
+                        document_title=doc_title or doc_filename or "Scientific Paper",
                         content=chunk.content,
                         raw_text=chunk.content,
                         retrieval_text=chunk.content,

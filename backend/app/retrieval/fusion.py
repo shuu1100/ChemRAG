@@ -103,6 +103,7 @@ class ReciprocalRankFusion:
             fused_chunk = ScoredChunk(
                 chunk_id=original.chunk_id,
                 document_id=original.document_id,
+                document_title=original.document_title,
                 content=original.content,
                 raw_text=original.raw_text,
                 retrieval_text=original.retrieval_text,

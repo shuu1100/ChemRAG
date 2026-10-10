@@ -105,6 +105,8 @@ class PostgreSQLLexicalRetriever(BaseLexicalRetriever):
                     Chunk,
                     rank_col,
                     headline_col,
+                    Document.title,
+                    Document.filename,
                 )
                 .join(Document, Chunk.document_id == Document.id)
                 .where(
@@ -138,7 +140,7 @@ class PostgreSQLLexicalRetriever(BaseLexicalRetriever):
             rows = result.all()
 
             scored_chunks: list[ScoredChunk] = []
-            for rank, (chunk, lexical_score, highlight) in enumerate(rows, start=1):
+            for rank, (chunk, lexical_score, highlight, doc_title, doc_filename) in enumerate(rows, start=1):
                 # If exact technical identifier matched, boost score
                 score_val = float(lexical_score) if lexical_score is not None else 0.0
                 has_exact_match = any(tid in chunk.content for tid in technical_ids)
@@ -158,6 +160,7 @@ class PostgreSQLLexicalRetriever(BaseLexicalRetriever):
                     ScoredChunk(
                         chunk_id=chunk.id,
                         document_id=chunk.document_id,
+                        document_title=doc_title or doc_filename or "Scientific Paper",
                         content=chunk.content,
                         raw_text=chunk.content,
                         retrieval_text=chunk.content,

@@ -195,9 +195,11 @@ class IngestionPipelineWorker:
             # Parsing stage — invokes scientific PDF parser
             file_bytes = await self.storage.get(document.storage_key)
             from backend.app.parsing.service import ScientificPDFParser
+            from backend.app.models.document import DocumentPage
+            from sqlalchemy import delete
             parser = ScientificPDFParser()
             try:
-                parsed_doc = await parser.parse(file_bytes, filename=document.filename, enable_grobid=False)
+                parsed_doc = await parser.parse(file_bytes, filename=document.filename, enable_grobid=True)
                 if parsed_doc.title and not document.title:
                     document.title = parsed_doc.title
                 if parsed_doc.authors and not document.authors:
@@ -206,22 +208,75 @@ class IngestionPipelineWorker:
                     document.doi = parsed_doc.doi
                 if parsed_doc.abstract and not document.abstract:
                     document.abstract = parsed_doc.abstract
+
+                # Persist DocumentPage records for provenance
+                if parsed_doc.pages and document.versions:
+                    ver = document.versions[0]
+                    await session.execute(delete(DocumentPage).where(DocumentPage.document_id == document.id))
+                    for p in parsed_doc.pages:
+                        dp = DocumentPage(
+                            id=uuid.uuid4(),
+                            document_id=document.id,
+                            version_id=ver.id,
+                            page_number=p.page_number,
+                            width_pts=p.width_pts,
+                            height_pts=p.height_pts,
+                            raw_text=p.raw_text,
+                            has_tables=len(p.tables) > 0,
+                            has_equations=len(p.equations) > 0,
+                        )
+                        session.add(dp)
+                    await session.flush()
             except Exception as parse_exc:
                 logger.warning("Scientific PDF parser warning during ingestion", error=str(parse_exc))
-
 
         elif stage == IngestionStage.EXTRACT:
             # Asset & chemical entity extraction stage
             from backend.app.chemistry.image_classifier import ChemicalImageClassifier
             from backend.app.chemistry.ocsr.ensemble import EnsembleOCSRService
+            from backend.app.services.experiment_extractor import ExperimentExtractor
+            from backend.app.models.table_experiment import Experiment
+            
             classifier = ChemicalImageClassifier()
             ocsr_service = EnsembleOCSRService()
-            # Stage records successful initialization of chemical OCSR extraction pipeline
+            
+            # Run experimental records extraction
+            file_bytes = await self.storage.get(document.storage_key)
+            sample_text = file_bytes[:100000].decode("latin-1", errors="ignore")
+            exp_extractor = ExperimentExtractor()
+            ext_experiments = exp_extractor.extract_from_text(sample_text)
+
+            for rec in ext_experiments:
+                exp_model = Experiment(
+                    id=uuid.uuid4(),
+                    document_id=document.id,
+                    description=rec.description,
+                    experimental_conditions={
+                        "temperature_celsius": rec.temperature_celsius,
+                        "pressure_bar": rec.pressure_bar,
+                        "solvent": rec.solvent,
+                        "catalyst": rec.catalyst,
+                        "reaction_time_hours": rec.reaction_time_hours,
+                    },
+                    results={
+                        "yield_percentage": rec.yield_percentage,
+                    },
+                    chemical_participants=[
+                        {"role": "reactant", "name": r} for r in rec.reactants
+                    ] + [
+                        {"role": "product", "name": p} for p in rec.products
+                    ],
+                    confidence=rec.confidence,
+                )
+                session.add(exp_model)
+            await session.flush()
+
             if job.config:
                 job.config["chemical_extraction"] = {
                     "classifier": "ChemicalImageClassifier",
                     "ocsr_ensemble": ["DECIMER", "MolScribe"],
                     "validator": "RDKit",
+                    "experiments_extracted": len(ext_experiments),
                 }
             await session.commit()
 

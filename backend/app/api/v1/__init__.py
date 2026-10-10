@@ -14,6 +14,7 @@ from backend.app.api.v1.endpoints.metadata import router as metadata_router
 from backend.app.api.v1.endpoints.search import router as search_router
 
 from backend.app.api.v1.endpoints.chat import router as chat_router
+from backend.app.api.v1.endpoints.experiments import router as experiments_router
 from backend.app.api.v1.endpoints.observability import router as observability_router
 
 router = APIRouter()
@@ -38,6 +39,9 @@ router.include_router(citations_router, prefix="/citations", tags=["Citations"])
 
 # Scientific External Metadata (Phase 16)
 router.include_router(metadata_router, prefix="/metadata", tags=["Metadata"])
+
+# Experimental Records (Phase F)
+router.include_router(experiments_router, prefix="/experiments", tags=["Experiments"])
 
 # System Evaluation & RAGAS Benchmarks (Phase 17)
 router.include_router(evaluation_router, prefix="/evaluation", tags=["Evaluation"])

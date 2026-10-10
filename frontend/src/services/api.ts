@@ -70,6 +70,40 @@ export const documentsApi = {
     const res = await apiClient.post(`/documents/${id}/process`);
     return res.data;
   },
+  getDocumentStatus: async (id: string): Promise<any> => {
+    const res = await apiClient.get(`/documents/${id}/status`);
+    return res.data;
+  },
+};
+
+export const jobsApi = {
+  listJobs: async (): Promise<IngestionJob[]> => {
+    const res = await apiClient.get<IngestionJob[]>('/documents/jobs');
+    return res.data;
+  },
+  getJob: async (id: string): Promise<IngestionJob> => {
+    const res = await apiClient.get<IngestionJob>(`/documents/jobs/${id}`);
+    return res.data;
+  },
+  retryJob: async (id: string): Promise<IngestionJob> => {
+    const res = await apiClient.post<IngestionJob>(`/documents/jobs/${id}/retry`);
+    return res.data;
+  },
+};
+
+export const experimentsApi = {
+  listExperiments: async (params?: { chemical?: string; solvent?: string; catalyst?: string }): Promise<any[]> => {
+    const res = await apiClient.get<any[]>('/experiments', { params });
+    return res.data;
+  },
+  getExperiment: async (id: string): Promise<any> => {
+    const res = await apiClient.get<any>(`/experiments/${id}`);
+    return res.data;
+  },
+  extractForDocument: async (documentId: string): Promise<any[]> => {
+    const res = await apiClient.post<any[]>(`/experiments/extract/${documentId}`);
+    return res.data;
+  },
 };
 
 export const searchApi = {
@@ -108,7 +142,6 @@ export const chemistryApi = {
       };
     }
 
-    // Fallback if not found: attempt validation endpoint directly
     try {
       const valRes = await apiClient.post('/chemistry/validate', { smiles: identifier });
       if (valRes.data.valid) {

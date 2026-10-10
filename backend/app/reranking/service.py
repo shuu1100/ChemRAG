@@ -7,16 +7,16 @@ Fulfills Prompt 10.2:
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Sequence
 import uuid
 
+from backend.app.core.logging import get_logger
 from backend.app.reranking.base import BaseRerankerProvider
 from backend.app.reranking.factory import get_reranker_provider
 from backend.app.reranking.models import RerankInputChunk, RerankResult
 from backend.app.retrieval.models import ScoredChunk
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class RerankingService:
@@ -56,12 +56,16 @@ class RerankingService:
         input_chunks = [RerankInputChunk.from_scored_chunk(c) for c in pool]
         chunk_lookup = {c.chunk_id: c for c in pool}
 
-        # Cross-encoder inference
-        rerank_results = await self.provider.rerank(
-            query=query,
-            chunks=input_chunks,
-            top_n=target_top_n,
-        )
+        # Cross-encoder inference with fallback
+        try:
+            rerank_results = await self.provider.rerank(
+                query=query,
+                chunks=input_chunks,
+                top_n=target_top_n,
+            )
+        except Exception as exc:
+            logger.warning("Reranker provider failed, falling back to RRF ordering", error=str(exc))
+            return list(candidates)[:target_top_n]
 
         final_chunks: list[ScoredChunk] = []
         for r in rerank_results:

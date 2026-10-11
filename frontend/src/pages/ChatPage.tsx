@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CitationBadge } from '../components/citations/CitationBadge';
+import { PDFViewerOverlay } from '../components/citations/PDFViewerOverlay';
 import { chatApi } from '../services/api';
 import { AgentStepTrace, ChatMessage, CitationItem } from '../types';
 
@@ -12,6 +13,7 @@ export const ChatPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [activeCitation, setActiveCitation] = useState<CitationItem | null>(null);
 
   const initialWelcomeMsg: ChatMessage = {
     id: 'msg-welcome',
@@ -197,6 +199,7 @@ export const ChatPage: React.FC = () => {
                             documentTitle={cit.document_title}
                             pageNumber={cit.page_number}
                             confidence={cit.confidence}
+                            onClick={() => setActiveCitation(cit)}
                           />
                         ))}
                       </div>
@@ -318,6 +321,18 @@ export const ChatPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {activeCitation && (
+        <PDFViewerOverlay
+          citationId={activeCitation.citation_id}
+          documentTitle={activeCitation.document_title || 'Source Document'}
+          pdfUrl={`/api/v1/documents/${activeCitation.document_id}/file`}
+          pageNumber={activeCitation.page_number || 1}
+          snippetText={activeCitation.raw_text}
+          doi={activeCitation.doi}
+          onClose={() => setActiveCitation(null)}
+        />
+      )}
     </div>
   );
 };

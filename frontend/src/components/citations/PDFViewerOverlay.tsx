@@ -60,9 +60,33 @@ export const PDFViewerOverlay: React.FC<PDFViewerOverlayProps> = ({
 
           {/* Controls */}
           <div className="flex items-center gap-2">
+            {/* Page navigation */}
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded border border-slate-300">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                className="px-2 py-0.5 text-xs font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-40 rounded cursor-pointer"
+                title="Previous Page"
+              >
+                ◀
+              </button>
+              <span className="text-xs font-mono font-bold px-1 text-slate-700 min-w-[32px] text-center">
+                p. {currentPage}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => p + 1)}
+                className="px-2 py-0.5 text-xs font-bold text-slate-700 hover:bg-slate-200 rounded cursor-pointer"
+                title="Next Page"
+              >
+                ▶
+              </button>
+            </div>
+
             <button
               onClick={handleZoomOut}
-              className="px-2.5 py-1 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded"
+              className="px-2.5 py-1 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded cursor-pointer"
               title="Zoom Out"
             >
               -
@@ -72,21 +96,30 @@ export const PDFViewerOverlay: React.FC<PDFViewerOverlayProps> = ({
             </span>
             <button
               onClick={handleZoomIn}
-              className="px-2.5 py-1 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded"
+              className="px-2.5 py-1 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded cursor-pointer"
               title="Zoom In"
             >
               +
             </button>
             <button
               onClick={handleRotate}
-              className="px-2.5 py-1 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded"
+              className="px-2.5 py-1 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded cursor-pointer"
               title="Rotate 90°"
             >
               ↻ {rotation}°
             </button>
+            <a
+              href={`${pdfUrl}#page=${currentPage}`}
+              target="_blank"
+              rel="noreferrer"
+              className="px-2.5 py-1 text-xs font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 rounded cursor-pointer"
+              title="Open raw PDF in new browser tab"
+            >
+              ↗ Tab
+            </a>
             <button
               onClick={onClose}
-              className="ml-4 px-3 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded transition-colors shadow-2xs"
+              className="ml-2 px-3 py-1 text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white rounded transition-colors shadow-2xs cursor-pointer"
             >
               Close
             </button>

@@ -95,7 +95,10 @@ class GrobidClient:
         if not xml_content:
             return GrobidResult(is_available=True)
 
-        soup = BeautifulSoup(xml_content, "xml")
+        try:
+            soup = BeautifulSoup(xml_content, "xml")
+        except Exception:
+            soup = BeautifulSoup(xml_content, "html.parser")
 
         # 1. Title
         title = None

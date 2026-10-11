@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { CitationBadge } from '../components/citations/CitationBadge';
+import { PDFViewerOverlay } from '../components/citations/PDFViewerOverlay';
 import { searchApi } from '../services/api';
 
 export const SearchPage: React.FC = () => {
@@ -8,6 +9,7 @@ export const SearchPage: React.FC = () => {
   const [hasSearched, setHasSearched] = useState<boolean>(false);
   const [results, setResults] = useState<any[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [activeCitation, setActiveCitation] = useState<any | null>(null);
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -132,7 +134,20 @@ export const SearchPage: React.FC = () => {
               <div key={res.chunk_id || idx} className="p-5 rounded-xl bg-white border border-slate-200 space-y-3 shadow-sm hover:border-cyan-300 transition-colors">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <CitationBadge citationId={`CIT-00${idx + 1}`} documentTitle={docTitle} pageNumber={pageNum} />
+                    <CitationBadge
+                      citationId={`CIT-00${idx + 1}`}
+                      documentTitle={docTitle}
+                      pageNumber={pageNum}
+                      onClick={() =>
+                        setActiveCitation({
+                          citation_id: `CIT-00${idx + 1}`,
+                          document_id: res.document_id,
+                          document_title: docTitle,
+                          page_number: pageNum,
+                          raw_text: res.content,
+                        })
+                      }
+                    />
                     <span className="text-sm font-extrabold text-slate-900">{docTitle}</span>
                     <span className="text-[11px] font-mono text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded">
                       Page {pageNum}
@@ -143,14 +158,21 @@ export const SearchPage: React.FC = () => {
                       Score: {scorePct}%
                     </span>
                     {res.document_id && (
-                      <a
-                        href={`/api/v1/documents/${res.document_id}/file`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2.5 py-1 text-[11px] font-mono font-bold text-cyan-700 hover:text-cyan-800 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded"
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveCitation({
+                            citation_id: `CIT-00${idx + 1}`,
+                            document_id: res.document_id,
+                            document_title: docTitle,
+                            page_number: pageNum,
+                            raw_text: res.content,
+                          })
+                        }
+                        className="px-2.5 py-1 text-[11px] font-mono font-bold text-cyan-700 hover:text-cyan-800 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded cursor-pointer"
                       >
                         📄 Open PDF
-                      </a>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -176,6 +198,17 @@ export const SearchPage: React.FC = () => {
             );
           })}
         </div>
+      )}
+
+      {activeCitation && (
+        <PDFViewerOverlay
+          citationId={activeCitation.citation_id}
+          documentTitle={activeCitation.document_title || 'Source Document'}
+          pdfUrl={`/api/v1/documents/${activeCitation.document_id}/file`}
+          pageNumber={activeCitation.page_number || 1}
+          snippetText={activeCitation.raw_text}
+          onClose={() => setActiveCitation(null)}
+        />
       )}
     </div>
   );

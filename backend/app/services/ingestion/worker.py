@@ -15,11 +15,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.logging import get_logger
-from backend.app.models.document import Document, DocumentVersion, ProcessingState
+from backend.app.models.document import Document, DocumentPage, DocumentVersion, ProcessingState
 from backend.app.models.pipeline import IngestionJob
 from backend.app.services.document_classifier import DocumentClassifier
 from backend.app.services.ingestion.stages import (
@@ -139,6 +139,11 @@ class IngestionPipelineWorker:
                 error=err_msg,
             )
 
+            try:
+                await session.rollback()
+            except Exception:
+                pass
+
             job.state = ProcessingState.FAILED
             job.error_message = err_msg
             job.error_traceback = err_tb
@@ -146,7 +151,10 @@ class IngestionPipelineWorker:
             document.processing_error = err_msg
 
             # Persist failure so it survives restarts
-            await session.commit()
+            try:
+                await session.commit()
+            except Exception:
+                pass
             raise
 
     async def _execute_stage(
@@ -195,8 +203,6 @@ class IngestionPipelineWorker:
             # Parsing stage — invokes scientific PDF parser
             file_bytes = await self.storage.get(document.storage_key)
             from backend.app.parsing.service import ScientificPDFParser
-            from backend.app.models.document import DocumentPage
-            from sqlalchemy import delete
             parser = ScientificPDFParser()
             try:
                 parsed_doc = await parser.parse(file_bytes, filename=document.filename, enable_grobid=True)
@@ -210,23 +216,30 @@ class IngestionPipelineWorker:
                     document.abstract = parsed_doc.abstract
 
                 # Persist DocumentPage records for provenance
-                if parsed_doc.pages and document.versions:
-                    ver = document.versions[0]
-                    await session.execute(delete(DocumentPage).where(DocumentPage.document_id == document.id))
-                    for p in parsed_doc.pages:
-                        dp = DocumentPage(
-                            id=uuid.uuid4(),
-                            document_id=document.id,
-                            version_id=ver.id,
-                            page_number=p.page_number,
-                            width_pts=p.width_pts,
-                            height_pts=p.height_pts,
-                            raw_text=p.raw_text,
-                            has_tables=len(p.tables) > 0,
-                            has_equations=len(p.equations) > 0,
-                        )
-                        session.add(dp)
-                    await session.flush()
+                if parsed_doc.pages:
+                    ver_stmt = (
+                        select(DocumentVersion)
+                        .where(DocumentVersion.document_id == document.id)
+                        .order_by(DocumentVersion.version_number.desc())
+                    )
+                    ver_res = await session.execute(ver_stmt)
+                    ver = ver_res.scalar_one_or_none()
+                    if ver:
+                        await session.execute(delete(DocumentPage).where(DocumentPage.document_id == document.id))
+                        for p in parsed_doc.pages:
+                            dp = DocumentPage(
+                                id=uuid.uuid4(),
+                                document_id=document.id,
+                                version_id=ver.id,
+                                page_number=p.page_number,
+                                width_pts=float(getattr(p, "width", 612.0) or 612.0),
+                                height_pts=float(getattr(p, "height", 792.0) or 792.0),
+                                raw_text=(p.raw_text or "").replace("\x00", ""),
+                                has_tables=len(p.tables) > 0,
+                                has_equations=len(p.equations) > 0,
+                            )
+                            session.add(dp)
+                        await session.flush()
             except Exception as parse_exc:
                 logger.warning("Scientific PDF parser warning during ingestion", error=str(parse_exc))
 
@@ -240,31 +253,47 @@ class IngestionPipelineWorker:
             classifier = ChemicalImageClassifier()
             ocsr_service = EnsembleOCSRService()
             
-            # Run experimental records extraction
-            file_bytes = await self.storage.get(document.storage_key)
-            sample_text = file_bytes[:100000].decode("latin-1", errors="ignore")
+            # Run experimental records extraction from parsed document page text
+            dp_res = await session.execute(
+                select(DocumentPage.raw_text)
+                .where(DocumentPage.document_id == document.id)
+                .order_by(DocumentPage.page_number)
+            )
+            page_texts = [row[0] for row in dp_res.all() if row[0]]
+            sample_text = "\n\n".join(page_texts)
+            if not sample_text:
+                import fitz
+                file_bytes = await self.storage.get(document.storage_key)
+                doc_fitz = fitz.open(stream=file_bytes, filetype="pdf")
+                sample_text = "\n\n".join(p.get_text() for p in doc_fitz)
+                doc_fitz.close()
+
+            # Sanitize null bytes (\x00) for PostgreSQL UTF-8 compliance
+            sample_text = sample_text.replace("\x00", "")
+
             exp_extractor = ExperimentExtractor()
             ext_experiments = exp_extractor.extract_from_text(sample_text)
 
             for rec in ext_experiments:
+                desc = (rec.description or "").replace("\x00", "").strip()[:500]
                 exp_model = Experiment(
                     id=uuid.uuid4(),
                     document_id=document.id,
-                    description=rec.description,
+                    description=desc,
                     experimental_conditions={
                         "temperature_celsius": rec.temperature_celsius,
                         "pressure_bar": rec.pressure_bar,
-                        "solvent": rec.solvent,
-                        "catalyst": rec.catalyst,
+                        "solvent": rec.solvent.replace("\x00", "") if rec.solvent else None,
+                        "catalyst": rec.catalyst.replace("\x00", "") if rec.catalyst else None,
                         "reaction_time_hours": rec.reaction_time_hours,
                     },
                     results={
                         "yield_percentage": rec.yield_percentage,
                     },
                     chemical_participants=[
-                        {"role": "reactant", "name": r} for r in rec.reactants
+                        {"role": "reactant", "name": r.replace("\x00", "")[:100]} for r in rec.reactants
                     ] + [
-                        {"role": "product", "name": p} for p in rec.products
+                        {"role": "product", "name": p.replace("\x00", "")[:100]} for p in rec.products
                     ],
                     confidence=rec.confidence,
                 )
